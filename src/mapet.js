@@ -72,7 +72,9 @@
     MapHandler.prototype.editable = true;
 
     MapHandler.prototype.initializeMap = function() {
-      return this.map = new google.maps.Map($('.js-map-container')[0], this.initialMapOptions);
+      this.map = new google.maps.Map($('.js-map-container')[0], this.initialMapOptions);
+      return this.bindMapEvents();
+    };
 
     MapHandler.prototype.initializeMode = function(modeName, modeCodename, modeOptions) {
       var optName;
@@ -123,6 +125,40 @@
         return this.map.fitBounds(latlngbounds);
       }
     };
+
+    MapHandler.prototype.bindMapEvents = function() {
+      var mapUpdater;
+      google.maps.event.addListener(this.map, 'click', (function(_this) {
+        return function(point) {
+          if (_this.handler && _this.editable) {
+            return _this.handler.onClick(point);
+          }
+        };
+      })(this));
+      google.maps.event.addListener(this.map, 'rightclick', (function(_this) {
+        return function(point) {
+          if (_this.handler && _this.editable) {
+            return _this.handler.onRightClick(point);
+          }
+        };
+      })(this));
+      mapUpdater = {
+        'bounds_changed_timeout': null
+      };
+      return google.maps.event.addListener(this.map, 'bounds_changed', (function(_this) {
+        return function() {
+          if (_this.handler) {
+            clearTimeout(mapUpdater.boundsChangedTimeout);
+            if (_this.eventDelayTime) {
+              return mapUpdater.boundsChangedTimeout = setTimeout(_this.handler.onMapBoundsChanged, _this.eventDelayTime);
+            } else {
+              return _this.handler.onMapBoundsChanged();
+            }
+          }
+        };
+      })(this));
+    };
+
     MapHandler.prototype.changeMode = function(modeName, modeCodename) {
       if (modeName === 'none') {
         this.mode = modeName;

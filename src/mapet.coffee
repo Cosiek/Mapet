@@ -49,11 +49,14 @@ class MapHandler
     modes: {}
     handler: null;  # just for convenience
 
+    editable: true;
+
     initializeMap: () ->
         # initialize map itself
         # TODO selector as a parameter
         @.map = new google.maps.Map($('.js-map-container')[0], @.initialMapOptions)
 
+        @.bindMapEvents()
 
     initializeMode: (modeName, modeCodename, modeOptions={}) ->
         # don't allow to override existing modes
@@ -100,6 +103,28 @@ class MapHandler
             for latLng in latLngs
                 latlngbounds.extend(latLng)
             @.map.fitBounds(latlngbounds)
+
+    bindMapEvents: () ->
+        google.maps.event.addListener(@map, 'click', (point) =>
+            if @.handler and @.editable
+                @.handler.onClick(point)
+        )
+
+        google.maps.event.addListener(@map, 'rightclick', (point) =>
+            if @.handler and @.editable
+                @.handler.onRightClick(point)
+        )
+
+        mapUpdater = {'bounds_changed_timeout': null}
+        google.maps.event.addListener(@map, 'bounds_changed', =>
+            if @.handler
+                clearTimeout(mapUpdater.boundsChangedTimeout)
+                if @.eventDelayTime
+                    mapUpdater.boundsChangedTimeout = setTimeout(
+                        @.handler.onMapBoundsChanged, @.eventDelayTime)
+                else
+                    @.handler.onMapBoundsChanged()
+        )
 
     changeMode: (modeName, modeCodename) ->
         # this should switch off the handler (note that it doesn't clear the map)
