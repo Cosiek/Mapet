@@ -58,6 +58,11 @@ class Mode
 
         return marker
 
+    removeMarker: (marker) ->
+        if marker
+            marker.setMap(null)
+            google.maps.event.clearInstanceListeners(marker)
+
 
 # Main map handler -----------------------------------------------------------
 

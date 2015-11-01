@@ -76,6 +76,13 @@
       return marker;
     };
 
+    Mode.prototype.removeMarker = function(marker) {
+      if (marker) {
+        marker.setMap(null);
+        return google.maps.event.clearInstanceListeners(marker);
+      }
+    };
+
     return Mode;
 
   })();
