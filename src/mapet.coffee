@@ -77,6 +77,30 @@ class MapHandler
         @.modes[modeName].map = @map
         @.modes[modeName].initialize()
 
+    centerMap: (points) ->
+        # fail fast
+        if not points
+            return
+
+        latLngs = []
+        for coords in points
+            if coords.lat and coords.lng
+                latLng = coords
+            else
+                latLng = new google.maps.LatLng(coords[0], coords[1])
+
+            latLngs.push(latLng)
+
+        # this is a single point
+        if latLngs.length == 1
+            @.map.setCenter(latLngs[0])
+        # this is some sort of collection of points
+        else
+            latlngbounds = new google.maps.LatLngBounds()
+            for latLng in latLngs
+                latlngbounds.extend(latLng)
+            @.map.fitBounds(latlngbounds)
+
     changeMode: (modeName, modeCodename) ->
         # this should switch off the handler (note that it doesn't clear the map)
         if modeName == 'none'

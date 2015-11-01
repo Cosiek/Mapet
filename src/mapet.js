@@ -97,6 +97,32 @@
       return this.modes[modeName].initialize();
     };
 
+    MapHandler.prototype.centerMap = function(points) {
+      var coords, i, j, latLng, latLngs, latlngbounds, len, len1;
+      if (!points) {
+        return;
+      }
+      latLngs = [];
+      for (i = 0, len = points.length; i < len; i++) {
+        coords = points[i];
+        if (coords.lat && coords.lng) {
+          latLng = coords;
+        } else {
+          latLng = new google.maps.LatLng(coords[0], coords[1]);
+        }
+        latLngs.push(latLng);
+      }
+      if (latLngs.length === 1) {
+        return this.map.setCenter(latLngs[0]);
+      } else {
+        latlngbounds = new google.maps.LatLngBounds();
+        for (j = 0, len1 = latLngs.length; j < len1; j++) {
+          latLng = latLngs[j];
+          latlngbounds.extend(latLng);
+        }
+        return this.map.fitBounds(latlngbounds);
+      }
+    };
     MapHandler.prototype.changeMode = function(modeName, modeCodename) {
       if (modeName === 'none') {
         this.mode = modeName;
