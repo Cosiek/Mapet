@@ -127,6 +127,79 @@ class MarkersMode extends Mode
                     marker[attr] = coord[2][attr]
             @.markers.push(marker)
 
+
+class PolygonMode extends MarkersMode
+    markers: []
+    polygons: []
+    selected: null;
+
+    markerOptions: {
+        'icon': 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+    }
+
+    polygonOptions: {
+        strokeColor: '#BA89CC',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: '#BA89CC',
+        fillOpacity: 0.35,
+        editable: false,
+        draggable: false,
+        geodesic: true,
+    }
+
+    onClick: (point) ->
+        if @.selected
+            # add point to polygon
+            super(point)
+            @.redrawPolygon()
+        else
+            # start new polygon
+            polygon = new Polygon()
+
+    onRightClick: (point) ->
+        @selected = null;
+        @redrawPolygon()
+
+    removeMarker: (marker) ->
+        super(marker)
+        @redrawPolygon()
+
+    redrawPolygon: ->
+        # clear existing polygon
+        @.clearPolygon()
+
+        # draw new one (if there are more then two markers)
+        if @.markers.length > 2
+            locations = []
+            for marker in @.markers
+                locations.push(marker.position)
+
+            # construct the polygon
+            @.polygonOptions.paths = locations
+
+            @.polygon = new google.maps.Polygon(@.polygonOptions)
+            @.polygon.setMap(@.map)
+
+            # pass click event to map if polygon was clicked
+            google.maps.event.addListener(@.polygon, 'click', (point) =>
+                google.maps.event.trigger(@.map, 'click', point)
+            )
+
+    clearPolygon: ->
+        if @.polygon
+            @.polygon.setMap(null)
+            google.maps.event.clearInstanceListeners(@.polygon)
+
+    clear: ->
+        @.clearPolygon()
+        super()
+
+    drawFromInitialData: (data) ->
+        super(data)
+        @.redrawPolygon()
+
+
 # Main map handler -----------------------------------------------------------
 
 class MapHandler
@@ -144,6 +217,7 @@ class MapHandler
     availableModes: {
         'BaseMode': Mode,
         'MarkersMode': MarkersMode,
+        'PolygonMode': PolygonMode,
     }
     modes: {}
     handler: null;  # just for convenience
