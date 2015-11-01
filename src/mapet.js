@@ -159,6 +159,15 @@
       })(this));
     };
 
+    MapHandler.prototype.clearMap = function() {
+      var mode, results;
+      results = [];
+      for (mode in this.modes) {
+        results.push(this.modes[mode].clear());
+      }
+      return results;
+    };
+
     MapHandler.prototype.changeMode = function(modeName, modeCodename) {
       if (modeName === 'none') {
         this.mode = modeName;

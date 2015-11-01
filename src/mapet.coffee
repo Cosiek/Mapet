@@ -126,6 +126,10 @@ class MapHandler
                     @.handler.onMapBoundsChanged()
         )
 
+    clearMap: () ->
+        for mode of @modes
+            @modes[mode].clear()
+
     changeMode: (modeName, modeCodename) ->
         # this should switch off the handler (note that it doesn't clear the map)
         if modeName == 'none'
