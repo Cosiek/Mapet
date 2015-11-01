@@ -44,6 +44,38 @@
       return null;
     };
 
+    Mode.prototype.createMarker = function(latLng, options, callbacks) {
+      var ev, key, marker, opts;
+      if (!(latLng.lat && latLng.lng)) {
+        latLng = new google.maps.LatLng(latLng[0], latLng[1]);
+      }
+      opts = {
+        'map': this.map,
+        'position': latLng
+      };
+      for (key in this.markerOptions) {
+        opts[key] = this.markerOptions[key];
+      }
+      for (key in options) {
+        opts[key] = options[key];
+      }
+      marker = new google.maps.Marker(opts);
+      if (callbacks) {
+        for (ev in callbacks) {
+          google.maps.event.addListener(marker, ev, (function(_this) {
+            return function() {
+              var args;
+              args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+              args.splice(0, 0, _this);
+              args.splice(0, 0, marker);
+              return callbacks[ev](args);
+            };
+          })(this));
+        }
+      }
+      return marker;
+    };
+
     return Mode;
 
   })();

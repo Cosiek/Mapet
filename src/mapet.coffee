@@ -29,6 +29,35 @@ class Mode
     getValue: ->
         null;
 
+    createMarker: (latLng, options, callbacks) ->
+        # convert latLng to real latLng if it isn't already
+        if not (latLng.lat and latLng.lng)
+            latLng = new google.maps.LatLng(latLng[0], latLng[1])
+
+        opts = {
+            'map': @.map,
+            'position': latLng,
+        }
+
+        for key of @.markerOptions
+            opts[key] = @.markerOptions[key]
+
+        for key of options
+            opts[key] = options[key]
+
+        marker = new google.maps.Marker(opts)
+
+        # bind event listeners
+        if callbacks
+            for ev of callbacks
+                google.maps.event.addListener(marker, ev, (args...) =>
+                    args.splice(0, 0, @)
+                    args.splice(0, 0, marker)
+                    callbacks[ev](args)
+                )
+
+        return marker
+
 
 # Main map handler -----------------------------------------------------------
 
