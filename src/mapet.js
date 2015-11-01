@@ -185,6 +185,8 @@
 
     MapHandler.prototype.map = null;
 
+    MapHandler.prototype.mapContainerSelector = '#map-container';
+
     MapHandler.prototype.initialMapOptions = {
       center: new google.maps.LatLng(52.21885952070011, 20.983983278274536),
       zoom: 18,
@@ -204,8 +206,17 @@
 
     MapHandler.prototype.editable = true;
 
-    MapHandler.prototype.initializeMap = function() {
-      this.map = new google.maps.Map($('.js-map-container')[0], this.initialMapOptions);
+    MapHandler.prototype.initializeMap = function(mapContainerSelector) {
+      var className, id, mapContainer;
+      mapContainerSelector = mapContainerSelector || this.mapContainerSelector;
+      if (mapContainerSelector.charAt(0) === '.') {
+        className = mapContainerSelector.slice(1);
+        mapContainer = document.getElementsByClassName(className)[0];
+      } else if (mapContainerSelector.charAt(0) === '#') {
+        id = mapContainerSelector.slice(1);
+        mapContainer = document.getElementById(id);
+      }
+      this.map = new google.maps.Map(mapContainer, this.initialMapOptions);
       return this.bindMapEvents();
     };
 

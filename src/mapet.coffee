@@ -132,6 +132,7 @@ class MarkersMode extends Mode
 class MapHandler
     # map stuff
     map: null;
+    mapContainerSelector: '#map-container'
     initialMapOptions: {
         center: new google.maps.LatLng(52.21885952070011, 20.983983278274536),
         zoom: 18,
@@ -149,10 +150,17 @@ class MapHandler
 
     editable: true;
 
-    initializeMap: () ->
+    initializeMap: (mapContainerSelector) ->
+        mapContainerSelector = mapContainerSelector or @.mapContainerSelector
         # initialize map itself
-        # TODO selector as a parameter
-        @.map = new google.maps.Map($('.js-map-container')[0], @.initialMapOptions)
+        if mapContainerSelector.charAt(0) == '.'
+            className = mapContainerSelector.slice(1)
+            mapContainer = document.getElementsByClassName(className)[0]
+        else if mapContainerSelector.charAt(0) == '#'
+            id = mapContainerSelector.slice(1)
+            mapContainer = document.getElementById(id)
+
+        @.map = new google.maps.Map(mapContainer, @.initialMapOptions)
 
         @.bindMapEvents()
 
