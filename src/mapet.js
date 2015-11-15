@@ -23,18 +23,6 @@
       return null;
     };
 
-    Mode.prototype.onClick = function(point) {
-      return null;
-    };
-
-    Mode.prototype.onRightClick = function(point) {
-      return null;
-    };
-
-    Mode.prototype.onMapBoundsChanged = function() {
-      return null;
-    };
-
     Mode.prototype.start = function() {
       return null;
     };
@@ -101,7 +89,7 @@
 
     MarkersMode.prototype.removableMarkers = true;
 
-    MarkersMode.prototype.onClick = function(point) {
+    MarkersMode.prototype.on_click = function(point) {
       var marker;
       marker = this.createMarker(point.latLng);
       if (this.removableMarkers) {
@@ -206,21 +194,6 @@
       editable: false,
       draggable: false,
       geodesic: true
-    };
-
-    PolygonMode.prototype.onClick = function(point) {
-      var polygon;
-      if (this.selected) {
-        PolygonMode.__super__.onClick.call(this, point);
-        return this.redrawPolygon();
-      } else {
-        return polygon = new Polygon();
-      }
-    };
-
-    PolygonMode.prototype.onRightClick = function(point) {
-      this.selected = null;
-      return this.redrawPolygon();
     };
 
     PolygonMode.prototype.removeMarker = function(marker) {
@@ -362,36 +335,25 @@
     };
 
     MapHandler.prototype.bindMapEvents = function() {
-      var mapUpdater;
-      google.maps.event.addListener(this.map, 'click', (function(_this) {
-        return function(point) {
-          if (_this.handler && _this.editable) {
-            return _this.handler.onClick(point);
-          }
-        };
-      })(this));
-      google.maps.event.addListener(this.map, 'rightclick', (function(_this) {
-        return function(point) {
-          if (_this.handler && _this.editable) {
-            return _this.handler.onRightClick(point);
-          }
-        };
-      })(this));
-      mapUpdater = {
-        'bounds_changed_timeout': null
-      };
-      return google.maps.event.addListener(this.map, 'bounds_changed', (function(_this) {
-        return function() {
-          if (_this.handler) {
-            clearTimeout(mapUpdater.boundsChangedTimeout);
-            if (_this.eventDelayTime) {
-              return mapUpdater.boundsChangedTimeout = setTimeout(_this.handler.onMapBoundsChanged, _this.eventDelayTime);
-            } else {
-              return _this.handler.onMapBoundsChanged();
+      var bindWrapper, callbackName, eventType, events, i, len, results;
+      events = ['bounds_changed', 'center_changed', 'heading_changed', 'idle', 'maptypeid_changed', 'projection_changed', 'tilt_changed', 'zoom_changed', 'click', 'dblclick', 'rightclick', 'drag', 'dragstart', 'dragend', 'mousemove', 'mouseover', 'mouseout', 'tilesloaded'];
+      bindWrapper = (function(_this) {
+        return function(callbackName) {
+          return google.maps.event.addListener(_this.map, eventType, function(arg) {
+            if (_this.handler[callbackName]) {
+              console.log(callbackName, _this.mode, _this.handler);
+              return _this.handler[callbackName](arg);
             }
-          }
+          });
         };
-      })(this));
+      })(this);
+      results = [];
+      for (i = 0, len = events.length; i < len; i++) {
+        eventType = events[i];
+        callbackName = 'on_' + eventType;
+        results.push(bindWrapper(callbackName));
+      }
+      return results;
     };
 
     MapHandler.prototype.clearMap = function() {

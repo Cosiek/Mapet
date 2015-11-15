@@ -10,15 +10,6 @@ class Mode
     drawFromInitialData: (data) ->
         null;
 
-    onClick: (point) ->
-        null;
-
-    onRightClick: (point) ->
-        null;
-
-    onMapBoundsChanged: ->
-        null;
-
     start: ->
         # run when MapHandler enters this mode
         null;
@@ -70,7 +61,7 @@ class MarkersMode extends Mode
 
     removableMarkers: true;
 
-    onClick: (point) ->
+    on_click: (point) ->
         # insert a marker at given position
         marker = @.createMarker(point.latLng)
 
@@ -148,18 +139,6 @@ class PolygonMode extends MarkersMode
         geodesic: true,
     }
 
-    onClick: (point) ->
-        if @.selected
-            # add point to polygon
-            super(point)
-            @.redrawPolygon()
-        else
-            # start new polygon
-            polygon = new Polygon()
-
-    onRightClick: (point) ->
-        @selected = null;
-        @redrawPolygon()
 
     removeMarker: (marker) ->
         super(marker)
@@ -284,27 +263,30 @@ class MapHandler
                 latlngbounds.extend(latLng)
             @.map.fitBounds(latlngbounds)
 
-    bindMapEvents: () ->
-        google.maps.event.addListener(@map, 'click', (point) =>
-            if @.handler and @.editable
-                @.handler.onClick(point)
-        )
+    bindMapEvents: ->
+        events = [
+            'bounds_changed', 'center_changed', 'heading_changed', 'idle',
+            'maptypeid_changed', 'projection_changed', 'tilt_changed',
+            'zoom_changed',
+            'click', 'dblclick', 'rightclick'
+            'drag', 'dragstart', 'dragend',
+            'mousemove', 'mouseover', 'mouseout',
+            'tilesloaded',
+        ]
+        # TODO - some of these functions should be delayed
 
-        google.maps.event.addListener(@map, 'rightclick', (point) =>
-            if @.handler and @.editable
-                @.handler.onRightClick(point)
-        )
+        # this is the only thing about js that really bothers me
+        bindWrapper = (callbackName) =>
+            google.maps.event.addListener(@.map, eventType, (arg) =>
+                # don't do anything if handler has no callback for this event
+                if @.handler[callbackName]
+                    console.log(callbackName, @.mode, @.handler)
+                    @.handler[callbackName](arg)
+            )
 
-        mapUpdater = {'bounds_changed_timeout': null}
-        google.maps.event.addListener(@map, 'bounds_changed', =>
-            if @.handler
-                clearTimeout(mapUpdater.boundsChangedTimeout)
-                if @.eventDelayTime
-                    mapUpdater.boundsChangedTimeout = setTimeout(
-                        @.handler.onMapBoundsChanged, @.eventDelayTime)
-                else
-                    @.handler.onMapBoundsChanged()
-        )
+        for eventType in events
+            callbackName = 'on_' + eventType
+            bindWrapper(callbackName)
 
     clearMap: () ->
         for mode of @modes
