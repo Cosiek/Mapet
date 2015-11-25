@@ -175,73 +175,93 @@
       return PolygonMode.__super__.constructor.apply(this, arguments);
     }
 
-    PolygonMode.prototype.markers = [];
-
-    PolygonMode.prototype.polygons = [];
+    PolygonMode.prototype.wrappers = [];
 
     PolygonMode.prototype.selected = null;
 
-    PolygonMode.prototype.markerOptions = {
-      'icon': 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+    PolygonMode.prototype.drawFromInitialData = function(data) {
+      var i, len, polygonData, results, wrapper;
+      results = [];
+      for (i = 0, len = data.length; i < len; i++) {
+        polygonData = data[i];
+        wrapper = new PolygonWrapper(this, {
+          'selected': false
+        });
+        results.push(this.wrappers.push(wrapper));
+      }
+      return results;
     };
 
-    PolygonMode.prototype.polygonOptions = {
-      strokeColor: '#BA89CC',
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: '#BA89CC',
-      fillOpacity: 0.35,
-      editable: false,
-      draggable: false,
-      geodesic: true
+    PolygonMode.prototype.getValue = function() {
+      var data, i, len, ref, wrapper;
+      data = [];
+      ref = this.wrappers;
+      for (i = 0, len = ref.length; i < len; i++) {
+        wrapper = ref[i];
+        data.push(wrapper.getValue());
+      }
+      return data;
     };
 
-    PolygonMode.prototype.removeMarker = function(marker) {
-      PolygonMode.__super__.removeMarker.call(this, marker);
-      return this.redrawPolygon();
-    };
-
-    PolygonMode.prototype.redrawPolygon = function() {
-      var i, len, locations, marker, ref;
-      this.clearPolygon();
-      if (this.markers.length > 2) {
-        locations = [];
-        ref = this.markers;
-        for (i = 0, len = ref.length; i < len; i++) {
-          marker = ref[i];
-          locations.push(marker.position);
-        }
-        this.polygonOptions.paths = locations;
-        this.polygon = new google.maps.Polygon(this.polygonOptions);
-        this.polygon.setMap(this.map);
-        return google.maps.event.addListener(this.polygon, 'click', (function(_this) {
-          return function(point) {
-            return google.maps.event.trigger(_this.map, 'click', point);
-          };
-        })(this));
+    PolygonMode.prototype.on_click = function(ev) {
+      var wrapper;
+      if (this.selected) {
+        this.selected.crateMarker(ev.latLng);
+        return this.selected.redraw();
+      } else {
+        wrapper = new PolygonWrapper(this);
+        wrapper.crateMarker(ev.latLng);
+        this.wrappers.push(wrapper);
+        return this.select(wrapper);
       }
     };
 
-    PolygonMode.prototype.clearPolygon = function() {
-      if (this.polygon) {
-        this.polygon.setMap(null);
-        return google.maps.event.clearInstanceListeners(this.polygon);
-      }
+    PolygonMode.prototype.on_rightclick = function(ev) {
+      return this.deselect();
+    };
+
+    PolygonMode.prototype.start = function() {
+      return null;
     };
 
     PolygonMode.prototype.clear = function() {
-      this.clearPolygon();
-      return PolygonMode.__super__.clear.call(this);
+      var i, len, ref, wrapper;
+      ref = this.wrappers;
+      for (i = 0, len = ref.length; i < len; i++) {
+        wrapper = ref[i];
+        wrapper.clear();
+      }
+      this.wrappers = [];
+      return this.selected = null;
     };
 
-    PolygonMode.prototype.drawFromInitialData = function(data) {
-      PolygonMode.__super__.drawFromInitialData.call(this, data);
-      return this.redrawPolygon();
+    PolygonMode.prototype.select = function(wrapper) {
+      this.deselect();
+      this.selected = wrapper;
+      this.selected.selected = true;
+      return this.selected.redraw();
+    };
+
+    PolygonMode.prototype.deselect = function() {
+      if (this.selected) {
+        if (this.selected.isValid()) {
+          this.selected.selected = false;
+          this.selected.redraw();
+        } else {
+          this.removeWrapper(this.selected);
+        }
+      }
+      return this.selected = null;
+    };
+
+    PolygonMode.prototype.removeWrapper = function(wrapper) {
+      wrapper.clear();
+      return this.wrappers.splice(this.wrappers.indexOf(wrapper), 1);
     };
 
     return PolygonMode;
 
-  })(MarkersMode);
+  })(Mode);
 
   MapHandler = (function() {
     function MapHandler() {}
@@ -335,13 +355,13 @@
     };
 
     MapHandler.prototype.bindMapEvents = function() {
-      var bindWrapper, callbackName, eventType, events, i, len, results;
-      events = ['bounds_changed', 'center_changed', 'heading_changed', 'idle', 'maptypeid_changed', 'projection_changed', 'tilt_changed', 'zoom_changed', 'click', 'dblclick', 'rightclick', 'drag', 'dragstart', 'dragend', 'mousemove', 'mouseover', 'mouseout', 'tilesloaded'];
+      var bindWrapper, callbackName, delayedEvents, eventType, events, i, len, results;
+      events = ['bounds_changed', 'center_changed', 'heading_changed', 'idle', 'maptypeid_changed', 'projection_changed', 'tilt_changed', 'zoom_changed', 'click', 'dblclick', 'rightclick', 'dragstart', 'dragend', 'mouseover', 'mouseout', 'tilesloaded'];
+      delayedEvents = ['drag', 'mousemove'];
       bindWrapper = (function(_this) {
         return function(callbackName) {
           return google.maps.event.addListener(_this.map, eventType, function(arg) {
-            if (_this.handler[callbackName]) {
-              console.log(callbackName, _this.mode, _this.handler);
+            if (_this.handler && _this.handler[callbackName]) {
               return _this.handler[callbackName](arg);
             }
           });

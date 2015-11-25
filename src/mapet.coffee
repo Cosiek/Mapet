@@ -119,65 +119,75 @@ class MarkersMode extends Mode
             @.markers.push(marker)
 
 
-class PolygonMode extends MarkersMode
-    markers: []
-    polygons: []
+class PolygonMode extends Mode
+    wrappers: []
     selected: null;
 
-    markerOptions: {
-        'icon': 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-    }
-
-    polygonOptions: {
-        strokeColor: '#BA89CC',
-        strokeOpacity: 0.8,
-        strokeWeight: 2,
-        fillColor: '#BA89CC',
-        fillOpacity: 0.35,
-        editable: false,
-        draggable: false,
-        geodesic: true,
-    }
-
-
-    removeMarker: (marker) ->
-        super(marker)
-        @redrawPolygon()
-
-    redrawPolygon: ->
-        # clear existing polygon
-        @.clearPolygon()
-
-        # draw new one (if there are more then two markers)
-        if @.markers.length > 2
-            locations = []
-            for marker in @.markers
-                locations.push(marker.position)
-
-            # construct the polygon
-            @.polygonOptions.paths = locations
-
-            @.polygon = new google.maps.Polygon(@.polygonOptions)
-            @.polygon.setMap(@.map)
-
-            # pass click event to map if polygon was clicked
-            google.maps.event.addListener(@.polygon, 'click', (point) =>
-                google.maps.event.trigger(@.map, 'click', point)
-            )
-
-    clearPolygon: ->
-        if @.polygon
-            @.polygon.setMap(null)
-            google.maps.event.clearInstanceListeners(@.polygon)
-
-    clear: ->
-        @.clearPolygon()
-        super()
+    # data operations -----------------
 
     drawFromInitialData: (data) ->
-        super(data)
-        @.redrawPolygon()
+        for polygonData in data
+            wrapper = new PolygonWrapper(@, {'selected': false})
+            @.wrappers.push(wrapper)
 
+    getValue: ->
+        data = []
+        for wrapper in @.wrappers
+            data.push(wrapper.getValue())
+        return data
+
+    # events handling -----------------
+
+    on_click: (ev) ->
+        if @.selected
+            # if any polygon is selected, then pass a marker to it
+            @.selected.crateMarker(ev.latLng)
+            @.selected.redraw()
+        else
+            # otherwise create new polygon
+            wrapper = new PolygonWrapper(@)
+            wrapper.crateMarker(ev.latLng)
+            @.wrappers.push(wrapper)
+            @.select(wrapper)
+
+    on_rightclick: (ev) ->
+        # deselect any selected polygons
+        @.deselect()
+
+    # rendering -----------------------
+
+    start: ->
+        # run when MapHandler enters this mode
+        null;
+
+    clear: ->
+        for wrapper in @.wrappers
+            wrapper.clear()
+        @.wrappers = []
+        @.selected = null;
+
+    # wrappers manipulation -----------
+
+    select: (wrapper) ->
+        @.deselect()
+
+        @.selected = wrapper
+        @.selected.selected = true;
+        @.selected.redraw()
+
+    deselect: () ->
+        if @.selected
+            if @.selected.isValid()
+                @.selected.selected = false;
+                @.selected.redraw()
+            else
+                @.removeWrapper(@.selected)
+
+        @.selected = null;
+
+    removeWrapper: (wrapper) ->
+        wrapper.clear()
+        @.wrappers.splice(@.wrappers.indexOf(wrapper), 1)
 
 # Main map handler -----------------------------------------------------------
 
@@ -269,9 +279,13 @@ class MapHandler
             'maptypeid_changed', 'projection_changed', 'tilt_changed',
             'zoom_changed',
             'click', 'dblclick', 'rightclick'
-            'drag', 'dragstart', 'dragend',
-            'mousemove', 'mouseover', 'mouseout',
+            'dragstart', 'dragend',
+            'mouseover', 'mouseout',
             'tilesloaded',
+        ]
+
+        delayedEvents = [
+            'drag', 'mousemove'
         ]
         # TODO - some of these functions should be delayed
 
@@ -279,8 +293,8 @@ class MapHandler
         bindWrapper = (callbackName) =>
             google.maps.event.addListener(@.map, eventType, (arg) =>
                 # don't do anything if handler has no callback for this event
-                if @.handler[callbackName]
-                    console.log(callbackName, @.mode, @.handler)
+                # console.log(callbackName)
+                if @.handler and @.handler[callbackName]
                     @.handler[callbackName](arg)
             )
 
