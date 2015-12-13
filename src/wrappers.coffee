@@ -273,7 +273,7 @@ class PolygonWrapper extends MapObjectWrapper
         marker.setOptions(opts)
 
     updatePolygonOptions: (options) ->
-        opts = @.getMarkerOptions(options)
+        opts = @.getPolygonOptions(options)
         @.polygon.setOptions(opts)
 
     # bindings ------------------------

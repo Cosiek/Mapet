@@ -325,7 +325,7 @@
 
     PolygonWrapper.prototype.updatePolygonOptions = function(options) {
       var opts;
-      opts = this.getMarkerOptions(options);
+      opts = this.getPolygonOptions(options);
       return this.polygon.setOptions(opts);
     };
 
