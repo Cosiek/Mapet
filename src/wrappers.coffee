@@ -105,7 +105,6 @@ class PolygonWrapper extends MapObjectWrapper
         @.clearHelperMarkers()
 
         if @.mainMarkers.length < 2
-            console.log('if @.mainMarkers.length <= 1')
             @.clearPolygon()
             return null;
 
@@ -117,8 +116,6 @@ class PolygonWrapper extends MapObjectWrapper
             prevMarker = @.mainMarkers[i - 1]
             thisMarker = @.mainMarkers[i]
 
-            markers.push(thisMarker)
-
             thisPosition = thisMarker.getPosition()
 
             if @.selected and prevMarker
@@ -129,12 +126,11 @@ class PolygonWrapper extends MapObjectWrapper
                 markers.push(helperMarker)
 
             pathPoints.push(thisPosition)
+            markers.push(thisMarker)
 
             @.updateMarkerOptions(thisMarker)
 
             i += 1
-
-        markers.push(thisMarker)
 
         # create helper marker between last and first main marker
         if @.selected and @.mainMarkers.length > 2

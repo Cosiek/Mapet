@@ -124,7 +124,6 @@
       var helperMarker, helperPosition, i, markers, pathPoints, prevMarker, prevPosition, thisMarker, thisPosition;
       this.clearHelperMarkers();
       if (this.mainMarkers.length < 2) {
-        console.log('if @.mainMarkers.length <= 1');
         this.clearPolygon();
         return null;
       }
@@ -134,7 +133,6 @@
       while (i < this.mainMarkers.length) {
         prevMarker = this.mainMarkers[i - 1];
         thisMarker = this.mainMarkers[i];
-        markers.push(thisMarker);
         thisPosition = thisMarker.getPosition();
         if (this.selected && prevMarker) {
           prevPosition = prevMarker.getPosition();
@@ -143,10 +141,10 @@
           markers.push(helperMarker);
         }
         pathPoints.push(thisPosition);
+        markers.push(thisMarker);
         this.updateMarkerOptions(thisMarker);
         i += 1;
       }
-      markers.push(thisMarker);
       if (this.selected && this.mainMarkers.length > 2) {
         prevPosition = this.mainMarkers[this.mainMarkers.length - 1].getPosition();
         thisPosition = this.mainMarkers[0].getPosition();
