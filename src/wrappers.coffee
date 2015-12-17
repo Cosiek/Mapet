@@ -1,4 +1,6 @@
+# ============================================================================
 # Base wrapper ---------------------------------------------------------------
+# ============================================================================
 
 class MapObjectWrapper
     parent: null;
@@ -27,9 +29,11 @@ class MapObjectWrapper
         return true;
 
 
-# Task specific wrappers -----------------------------------------------------
+# ============================================================================
+# Base class for multiple markers wrappers -----------------------------------
+# ============================================================================
 
-class PolygonWrapper extends MapObjectWrapper
+class MultipleMarkersDrawnWrapper extends MapObjectWrapper
 
     markerOptions: {
         'icon': 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
@@ -46,25 +50,6 @@ class PolygonWrapper extends MapObjectWrapper
     helperMarkerOptions: {
         'icon': 'http://maps.google.com/mapfiles/ms/icons/pink-dot.png',
         'draggable': true,
-    }
-
-    polygonOptions: {
-        strokeColor: '#0000CC',
-        strokeOpacity: 0.2,
-        strokeWeight: 1,
-        fillColor: '#0000CC',
-        fillOpacity: 0.2,
-        editable: false,
-        draggable: false,
-        geodesic: true,
-    }
-
-    polygonOptionsWhenSelected: {
-        strokeColor: '#FF0000',
-        strokeOpacity: 0.5,
-        strokeWeight: 2,
-        fillColor: '#FF0000',
-        fillOpacity: 0.35,
     }
 
     # init ----------------------------
@@ -98,6 +83,179 @@ class PolygonWrapper extends MapObjectWrapper
             return true;
 
         return false;
+
+    # rendering -----------------------
+
+    redraw: ->
+        alert('redraw is not implemented')
+
+    clear: ->
+        while @.markers.length
+            @.clearMarker(@.markers[0])
+
+        @.mainMarkers = []
+        @.markers = []
+
+    hide: ->
+        @.clearHelperMarkers()
+        for marker in @.markers
+            marker.setVisible(false)
+
+    clearHelperMarkers: ->
+        clearMarkers = []
+        for marker in @.markers
+            if not marker.mainMarker
+                clearMarkers.push(marker)
+
+        for marker in clearMarkers
+            @.clearMarker(marker)
+
+    # map elements manipulation -------
+
+    crateMarker: (position) ->
+        options = @getMarkerOptions({'position': position})
+        marker = new google.maps.Marker(options)
+        marker.mainMarker = true;
+        @.bindMarker(marker)
+        @.markers.push(marker)
+        @.mainMarkers.push(marker)
+
+    createHelperMarker: (position) ->
+        options = @.getHelperMarkerOptions({'position': position})
+        marker = new google.maps.Marker(options)
+        marker.mainMarker = false;
+        @.bindMarker(marker)
+        @.markers.push(marker)
+        return marker
+
+    clearMarker: (marker) ->
+        google.maps.event.clearInstanceListeners(marker)
+        marker.setMap(null)
+        @.markers.splice(@.markers.indexOf(marker), 1)
+        if marker.mainMarker
+            @.mainMarkers.splice(@.mainMarkers.indexOf(marker), 1)
+
+    # map elements display ------------
+
+    getMarkerOptions: (options={}) ->
+        opts = {
+            'map': @.parent.map
+        }
+
+        for optName of @.markerOptions
+            opts[optName] = @.markerOptions[optName]
+
+        if @.selected
+            for optName of @.markerOptionsWhenSelected
+                opts[optName] = @.markerOptionsWhenSelected[optName]
+
+        for optName of options
+            opts[optName] = options[optName]
+
+        return opts
+
+    getHelperMarkerOptions: (options={}) ->
+        opts = {
+            'map': @.parent.map
+        }
+
+        for optName of @.helperMarkerOptions
+            opts[optName] = @.helperMarkerOptions[optName]
+
+        for optName of options
+            opts[optName] = options[optName]
+
+        return opts
+
+    updateMarkerOptions: (marker, options) ->
+        opts = @.getMarkerOptions(options)
+        marker.setOptions(opts)
+
+    # bindings ------------------------
+
+    bindMarker: (marker) ->
+        eventTypes = [
+            'click', 'dblclick', 'rightclick',
+            'drag', 'dragstart', 'dragend',
+            'mousedown', 'mouseup', 'mouseover', 'mouseout',
+            'position_changed', 'visible_changed',
+        ]
+
+        # this is the only thing about js that really bothers me
+        bindWrapper = (callbackName) =>
+            google.maps.event.addListener(marker, eventType, (arg) =>
+                @[callbackName](@, marker, arg)
+            )
+
+        for eventType in eventTypes
+            # callbacks are defined on wrapper
+            wrapperCallbackName = eventType + 'Marker'
+            @.ensureWrapperCallbackExists(wrapperCallbackName)
+            bindWrapper(wrapperCallbackName)
+
+    # callbacks -----------------------
+
+    rightclickMarker: (this_, marker, ev) ->
+        # delete marker (only if main)
+        if marker.mainMarker
+            this_.clearMarker(marker)
+            this_.redraw()
+
+    dragendMarker: (this_, marker, ev) ->
+        # mark this marker as main
+        if not marker.mainMarker
+            marker.mainMarker = true;
+            @.refillMainMarkers()
+        this_.redraw()
+
+    # helper functions ----------------
+
+    getHelperMarkerPosition: (positionA, positionB) ->
+        # TODO - this might not work near London and Kamchatka
+        lat = (positionA.lat() + positionB.lat()) / 2
+        lng = (positionA.lng() + positionB.lng()) / 2
+
+        return new google.maps.LatLng(lat, lng)
+
+    refillMainMarkers: ->
+        @.mainMarkers = []
+        for marker in @.markers
+            if marker.mainMarker
+                @.mainMarkers.push(marker)
+
+    ensureWrapperCallbackExists: (wrapperCallbackName) ->
+        # if no callback exists - create one to prevent 'no attr' errors
+        if not @[wrapperCallbackName]
+            @[wrapperCallbackName] = (this_, object, arg) ->
+                # console.log(wrapperCallbackName)
+                # TODO - add events publishing
+                # TODO - pass event to map
+                null;
+
+# ============================================================================
+# Task specific wrappers -----------------------------------------------------
+# ============================================================================
+
+class PolygonWrapper extends MultipleMarkersDrawnWrapper
+
+    polygonOptions: {
+        strokeColor: '#0000CC',
+        strokeOpacity: 0.2,
+        strokeWeight: 1,
+        fillColor: '#0000CC',
+        fillOpacity: 0.2,
+        editable: false,
+        draggable: false,
+        geodesic: true,
+    }
+
+    polygonOptionsWhenSelected: {
+        strokeColor: '#FF0000',
+        strokeOpacity: 0.5,
+        strokeWeight: 2,
+        fillColor: '#FF0000',
+        fillOpacity: 0.35,
+    }
 
     # rendering -----------------------
 
@@ -150,62 +308,19 @@ class PolygonWrapper extends MapObjectWrapper
             @.updatePolygonOptions({path: pathPoints})
 
     clear: ->
-        while @.markers.length
-            @.clearMarker(@.markers[0])
-
-        @.mainMarkers = []
-        @.markers = []
-
+        super()
         @.clearPolygon()
 
     hide: ->
-        @.clearHelperMarkers()
-        for marker in @.markers
-            marker.setVisible(false)
-
+        super()
         @.polygon.setVisible(false)
 
-    clearHelperMarkers: ->
-        clearMarkers = []
-        for marker in @.markers
-            if marker.mainMarker
-                #markers.push(marker)
-                null;
-            else
-                clearMarkers.push(marker)
-
-        for marker in clearMarkers
-            @.clearMarker(marker)
-
     # map elements manipulation -------
-
-    crateMarker: (position) ->
-        options = @getMarkerOptions({'position': position})
-        marker = new google.maps.Marker(options)
-        marker.mainMarker = true;
-        @.bindMarker(marker)
-        @.markers.push(marker)
-        @.mainMarkers.push(marker)
-
-    createHelperMarker: (position) ->
-        options = @.getHelperMarkerOptions({'position': position})
-        marker = new google.maps.Marker(options)
-        marker.mainMarker = false;
-        @.bindMarker(marker)
-        @.markers.push(marker)
-        return marker
 
     createPolygon: (path) ->
         options = @getPolygonOptions({'path': path})
         @.polygon = new google.maps.Polygon(options)
         @bindPolygon()
-
-    clearMarker: (marker) ->
-        google.maps.event.clearInstanceListeners(marker)
-        marker.setMap(null)
-        @.markers.splice(@.markers.indexOf(marker), 1)
-        if marker.mainMarker
-            @.mainMarkers.splice(@.mainMarkers.indexOf(marker), 1)
 
     clearPolygon: ->
         if not @.polygon
@@ -216,36 +331,6 @@ class PolygonWrapper extends MapObjectWrapper
         @.polygon = null;
 
     # map elements display ------------
-
-    getMarkerOptions: (options={}) ->
-        opts = {
-            'map': @.parent.map
-        }
-
-        for optName of @.markerOptions
-            opts[optName] = @.markerOptions[optName]
-
-        if @.selected
-            for optName of @.markerOptionsWhenSelected
-                opts[optName] = @.markerOptionsWhenSelected[optName]
-
-        for optName of options
-            opts[optName] = options[optName]
-
-        return opts
-
-    getHelperMarkerOptions: (options={}) ->
-        opts = {
-            'map': @.parent.map
-        }
-
-        for optName of @.helperMarkerOptions
-            opts[optName] = @.helperMarkerOptions[optName]
-
-        for optName of options
-            opts[optName] = options[optName]
-
-        return opts
 
     getPolygonOptions: (options={}) ->
         opts = {
@@ -264,35 +349,11 @@ class PolygonWrapper extends MapObjectWrapper
 
         return opts
 
-    updateMarkerOptions: (marker, options) ->
-        opts = @.getMarkerOptions(options)
-        marker.setOptions(opts)
-
     updatePolygonOptions: (options) ->
         opts = @.getPolygonOptions(options)
         @.polygon.setOptions(opts)
 
     # bindings ------------------------
-
-    bindMarker: (marker) ->
-        eventTypes = [
-            'click', 'dblclick', 'rightclick',
-            'drag', 'dragstart', 'dragend',
-            'mousedown', 'mouseup', 'mouseover', 'mouseout',
-            'position_changed', 'visible_changed',
-        ]
-
-        # this is the only thing about js that really bothers me
-        bindWrapper = (callbackName) =>
-            google.maps.event.addListener(marker, eventType, (arg) =>
-                @[callbackName](@, marker, arg)
-            )
-
-        for eventType in eventTypes
-            # callbacks are defined on wrapper
-            wrapperCallbackName = eventType + 'Marker'
-            @.ensureWrapperCallbackExists(wrapperCallbackName)
-            bindWrapper(wrapperCallbackName)
 
     bindPolygon: ->
         eventTypes = [
@@ -315,19 +376,6 @@ class PolygonWrapper extends MapObjectWrapper
 
     # callbacks -----------------------
 
-    rightclickMarker: (this_, marker, ev) ->
-        # delete marker (only if main)
-        if marker.mainMarker
-            this_.clearMarker(marker)
-            this_.redraw()
-
-    dragendMarker: (this_, marker, ev) ->
-        # mark this marker as main
-        if not marker.mainMarker
-            marker.mainMarker = true;
-            @.refillMainMarkers()
-        this_.redraw()
-
     clickPolygon: (this_, polygon, ev) ->
         if not this_.selected
             this_.parent.select(this_)
@@ -339,30 +387,6 @@ class PolygonWrapper extends MapObjectWrapper
         # remove this polygon (and wrapper)
         this_.clear()
         this_.parent.removeWrapper(this_)
-
-    # helper functions ----------------
-
-    getHelperMarkerPosition: (positionA, positionB) ->
-        # TODO - this might not work near London and Kamchatka
-        lat = (positionA.lat() + positionB.lat()) / 2
-        lng = (positionA.lng() + positionB.lng()) / 2
-
-        return new google.maps.LatLng(lat, lng)
-
-    refillMainMarkers: ->
-        @.mainMarkers = []
-        for marker in @.markers
-            if marker.mainMarker
-                @.mainMarkers.push(marker)
-
-    ensureWrapperCallbackExists: (wrapperCallbackName) ->
-        # if no callback exists - create one to prevent 'no attr' errors
-        if not @[wrapperCallbackName]
-            @[wrapperCallbackName] = (this_, object, arg) ->
-                # console.log(wrapperCallbackName)
-                # TODO - add events publishing
-                # TODO - pass event to map
-                null;
 
 # export
 window.PolygonWrapper = PolygonWrapper
