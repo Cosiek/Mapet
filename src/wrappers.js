@@ -257,9 +257,22 @@
     };
 
     MultipleMarkersDrawnWrapper.prototype.getHelperMarkerPosition = function(positionA, positionB) {
-      var lat, lng;
+      var deltaLng, deltaLng180, lat, lng;
+      lng = null;
+      if ((positionA.lng() * positionB.lng()) < 0) {
+        deltaLng = Math.abs(positionA.lng()) + Math.abs(positionB.lng());
+        deltaLng180 = 360 - Math.abs(positionA.lng()) - Math.abs(positionB.lng());
+        if (deltaLng > deltaLng180) {
+          lng = Math.max(positionA.lng(), positionB.lng()) + deltaLng180 / 2;
+          if (lng > 180) {
+            lng -= 360;
+          }
+        }
+      }
+      if (!lng) {
+        lng = (positionA.lng() + positionB.lng()) / 2;
+      }
       lat = (positionA.lat() + positionB.lat()) / 2;
-      lng = (positionA.lng() + positionB.lng()) / 2;
       return new google.maps.LatLng(lat, lng);
     };
 
@@ -306,7 +319,7 @@
       fillOpacity: 0.2,
       editable: false,
       draggable: false,
-      geodesic: true
+      geodesic: false
     };
 
     PolygonWrapper.prototype.polygonOptionsWhenSelected = {

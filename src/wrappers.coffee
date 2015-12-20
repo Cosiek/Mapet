@@ -211,9 +211,33 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
     # helper functions ----------------
 
     getHelperMarkerPosition: (positionA, positionB) ->
-        # TODO - this might not work near London and Kamchatka
+        # it is not possible to tell where the helper marker should be located
+        # using only coordinates.
+        # Example: A.lng = 170, B.lng = -170
+        # There is no way to tell if users intention is to draw a line that
+        # crosses meridian 180 or meridian 0.
+        # Google maps seem to assume, that user always wants to draw a shorter
+        # line.
+        # TODO - this does not work for long geodesic lines
+
+        lng = null;
+        # check if these are on different halfs of the globe
+        if (positionA.lng() * positionB.lng()) < 0
+            # figure out if line between these points will be shorter, if
+            # crossing meridian 180...
+            deltaLng = Math.abs(positionA.lng()) + Math.abs(positionB.lng())
+            deltaLng180 = 360 - Math.abs(positionA.lng()) - Math.abs(positionB.lng())
+            # calculate lng if it will
+            if deltaLng > deltaLng180
+                lng = Math.max(positionA.lng(), positionB.lng()) + deltaLng180 / 2
+                if lng > 180
+                    lng -= 360
+
+        # otherwise everything should be simple
+        if not lng
+            lng = (positionA.lng() + positionB.lng()) / 2
+
         lat = (positionA.lat() + positionB.lat()) / 2
-        lng = (positionA.lng() + positionB.lng()) / 2
 
         return new google.maps.LatLng(lat, lng)
 
@@ -246,7 +270,7 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
         fillOpacity: 0.2,
         editable: false,
         draggable: false,
-        geodesic: true,
+        geodesic: false,
     }
 
     polygonOptionsWhenSelected: {
