@@ -315,6 +315,8 @@
 
     MapHandler.prototype.editable = true;
 
+    MapHandler.prototype.delayedEventsTimeout = 1000;
+
     MapHandler.prototype.initializeMap = function(mapContainerSelector) {
       var className, id, mapContainer;
       mapContainerSelector = mapContainerSelector || this.mapContainerSelector;
@@ -380,11 +382,11 @@
     };
 
     MapHandler.prototype.bindMapEvents = function() {
-      var bindWrapper, callbackName, delayedEvents, eventType, events, i, len, results;
+      var bindDelayedWrapper, bindWrapper, callbackName, delayedEvents, eventType, events, i, j, len, len1, results;
       events = ['bounds_changed', 'center_changed', 'heading_changed', 'idle', 'maptypeid_changed', 'projection_changed', 'tilt_changed', 'zoom_changed', 'click', 'dblclick', 'rightclick', 'dragstart', 'dragend', 'mouseover', 'mouseout', 'tilesloaded'];
       delayedEvents = ['drag', 'mousemove'];
       bindWrapper = (function(_this) {
-        return function(callbackName) {
+        return function(callbackName, eventType) {
           return google.maps.event.addListener(_this.map, eventType, function(arg) {
             if (_this.handler && _this.handler.editable && _this.handler[callbackName]) {
               return _this.handler[callbackName](arg);
@@ -392,11 +394,35 @@
           });
         };
       })(this);
-      results = [];
       for (i = 0, len = events.length; i < len; i++) {
         eventType = events[i];
         callbackName = 'on_' + eventType;
-        results.push(bindWrapper(callbackName));
+        bindWrapper(callbackName, eventType);
+      }
+      bindDelayedWrapper = (function(_this) {
+        return function(callbackName, eventType) {
+          var delayHelper;
+          delayHelper = {
+            'timeout': null
+          };
+          return google.maps.event.addListener(_this.map, eventType, function(arg) {
+            if (delayHelper.timeout) {
+              return null;
+            }
+            return delayHelper.timeout = setTimeout(function() {
+              if (_this.handler && _this.handler.editable && _this.handler[callbackName]) {
+                _this.handler[callbackName](arg);
+              }
+              return delayHelper.timeout = null;
+            }, _this.delayedEventsTimeout);
+          });
+        };
+      })(this);
+      results = [];
+      for (j = 0, len1 = delayedEvents.length; j < len1; j++) {
+        eventType = delayedEvents[j];
+        callbackName = 'on_' + eventType;
+        results.push(bindDelayedWrapper(callbackName, eventType));
       }
       return results;
     };

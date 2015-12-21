@@ -224,6 +224,8 @@ class MapHandler
 
     editable: true;
 
+    delayedEventsTimeout: 1000
+
     initializeMap: (mapContainerSelector) ->
         mapContainerSelector = mapContainerSelector or @.mapContainerSelector
         # initialize map itself
@@ -298,10 +300,9 @@ class MapHandler
         delayedEvents = [
             'drag', 'mousemove'
         ]
-        # TODO - some of these functions should be delayed
 
         # this is the only thing about js that really bothers me
-        bindWrapper = (callbackName) =>
+        bindWrapper = (callbackName, eventType) =>
             google.maps.event.addListener(@.map, eventType, (arg) =>
                 # don't do anything if handler has no callback for this event
                 # don't do anything if handler is marked as not editable
@@ -312,7 +313,28 @@ class MapHandler
 
         for eventType in events
             callbackName = 'on_' + eventType
-            bindWrapper(callbackName)
+            bindWrapper(callbackName, eventType)
+
+        bindDelayedWrapper = (callbackName, eventType) =>
+            delayHelper = {'timeout': null}
+            google.maps.event.addListener(@.map, eventType, (arg) =>
+                if delayHelper.timeout
+                    return null;
+
+                delayHelper.timeout = setTimeout( =>
+                    # don't do anything if handler has no callback for this event
+                    # don't do anything if handler is marked as not editable
+                    if @.handler and @.handler.editable and @.handler[callbackName]
+                        @.handler[callbackName](arg)
+                    delayHelper.timeout = null;
+
+                , @.delayedEventsTimeout)
+            )
+
+        for eventType in delayedEvents
+            callbackName = 'on_' + eventType
+            bindDelayedWrapper(callbackName, eventType)
+
 
     clearMap: () ->
         for mode of @modes
