@@ -122,6 +122,7 @@ class MarkersMode extends Mode
 class PolygonMode extends Mode
     wrappers: []
     selected: null;
+    editable: true;
 
     # data operations -----------------
 
@@ -184,6 +185,16 @@ class PolygonMode extends Mode
                 @.removeWrapper(@.selected)
 
         @.selected = null;
+
+    setEditable: (editable) ->
+        @editable = editable
+        if @.editable
+            for wrapper in @.wrappers
+                wrapper.setEditable(true)
+        else
+            @.deselect()
+            for wrapper in @.wrappers
+                wrapper.setEditable(false)
 
     removeWrapper: (wrapper) ->
         wrapper.clear()
@@ -293,8 +304,9 @@ class MapHandler
         bindWrapper = (callbackName) =>
             google.maps.event.addListener(@.map, eventType, (arg) =>
                 # don't do anything if handler has no callback for this event
+                # don't do anything if handler is marked as not editable
                 # console.log(callbackName)
-                if @.handler and @.handler[callbackName]
+                if @.handler and @.handler.editable and @.handler[callbackName]
                     @.handler[callbackName](arg)
             )
 
@@ -319,5 +331,9 @@ class MapHandler
         @.mode = modeName
         @.handler = @.modes[modeName]
         @.handler.start()
+
+    setEditable: (editable) ->
+        if @.handler
+            @.handler.setEditable(editable)
 
 window.MapHandler = MapHandler

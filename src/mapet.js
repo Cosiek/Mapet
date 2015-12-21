@@ -179,6 +179,8 @@
 
     PolygonMode.prototype.selected = null;
 
+    PolygonMode.prototype.editable = true;
+
     PolygonMode.prototype.drawFromInitialData = function(data) {
       var i, len, polygonData, results, wrapper;
       results = [];
@@ -252,6 +254,29 @@
         }
       }
       return this.selected = null;
+    };
+
+    PolygonMode.prototype.setEditable = function(editable) {
+      var i, j, len, len1, ref, ref1, results, results1, wrapper;
+      this.editable = editable;
+      if (this.editable) {
+        ref = this.wrappers;
+        results = [];
+        for (i = 0, len = ref.length; i < len; i++) {
+          wrapper = ref[i];
+          results.push(wrapper.setEditable(true));
+        }
+        return results;
+      } else {
+        this.deselect();
+        ref1 = this.wrappers;
+        results1 = [];
+        for (j = 0, len1 = ref1.length; j < len1; j++) {
+          wrapper = ref1[j];
+          results1.push(wrapper.setEditable(false));
+        }
+        return results1;
+      }
     };
 
     PolygonMode.prototype.removeWrapper = function(wrapper) {
@@ -361,7 +386,7 @@
       bindWrapper = (function(_this) {
         return function(callbackName) {
           return google.maps.event.addListener(_this.map, eventType, function(arg) {
-            if (_this.handler && _this.handler[callbackName]) {
+            if (_this.handler && _this.handler.editable && _this.handler[callbackName]) {
               return _this.handler[callbackName](arg);
             }
           });
@@ -396,6 +421,12 @@
       this.mode = modeName;
       this.handler = this.modes[modeName];
       return this.handler.start();
+    };
+
+    MapHandler.prototype.setEditable = function(editable) {
+      if (this.handler) {
+        return this.handler.setEditable(editable);
+      }
     };
 
     return MapHandler;

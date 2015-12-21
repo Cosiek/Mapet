@@ -9,6 +9,8 @@
 
     MapObjectWrapper.prototype.selected = false;
 
+    MapObjectWrapper.prototype.editable = true;
+
     function MapObjectWrapper(parent, options) {
       var opt;
       this.parent = parent;
@@ -221,6 +223,10 @@
       return marker.setOptions(opts);
     };
 
+    MultipleMarkersDrawnWrapper.prototype.getDrawHelperMarker = function() {
+      return this.selected && this.editable;
+    };
+
     MultipleMarkersDrawnWrapper.prototype.bindMarker = function(marker) {
       var bindWrapper, eventType, eventTypes, j, len, results, wrapperCallbackName;
       eventTypes = ['click', 'dblclick', 'rightclick', 'drag', 'dragstart', 'dragend', 'mousedown', 'mouseup', 'mouseover', 'mouseout', 'position_changed', 'visible_changed'];
@@ -239,6 +245,36 @@
         results.push(bindWrapper(wrapperCallbackName));
       }
       return results;
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.bindMarkers = function() {
+      var j, len, marker, ref, results;
+      ref = this.markers;
+      results = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        marker = ref[j];
+        results.push(this.bindMarker(marker));
+      }
+      return results;
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.unbindMarkers = function() {
+      var j, len, marker, ref, results;
+      ref = this.markers;
+      results = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        marker = ref[j];
+        results.push(google.maps.event.clearInstanceListeners(marker));
+      }
+      return results;
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.setEditable = function(editable) {
+      this.editable = editable;
+      this.unbindMarkers();
+      if (this.editable) {
+        return this.bindMarkers();
+      }
     };
 
     MultipleMarkersDrawnWrapper.prototype.rightclickMarker = function(this_, marker, ev) {
@@ -344,7 +380,7 @@
         prevMarker = this.mainMarkers[i - 1];
         thisMarker = this.mainMarkers[i];
         thisPosition = thisMarker.getPosition();
-        if (this.selected && prevMarker) {
+        if (this.getDrawHelperMarker() && prevMarker) {
           prevPosition = prevMarker.getPosition();
           helperPosition = this.getHelperMarkerPosition(prevPosition, thisPosition);
           helperMarker = this.createHelperMarker(helperPosition);
@@ -355,7 +391,7 @@
         this.updateMarkerOptions(thisMarker);
         i += 1;
       }
-      if (this.selected && this.mainMarkers.length > 2) {
+      if (this.getDrawHelperMarker() && this.mainMarkers.length > 2) {
         prevPosition = this.mainMarkers[this.mainMarkers.length - 1].getPosition();
         thisPosition = this.mainMarkers[0].getPosition();
         helperPosition = this.getHelperMarkerPosition(prevPosition, thisPosition);
@@ -395,7 +431,7 @@
       if (!this.polygon) {
         return null;
       }
-      google.maps.event.clearInstanceListeners(this.polygon);
+      this.unbindPolygon();
       this.polygon.setMap(null);
       delete this.polygon;
       return this.polygon = null;
@@ -447,6 +483,18 @@
         results.push(bindWrapper(wrapperCallbackName));
       }
       return results;
+    };
+
+    PolygonWrapper.prototype.unbindPolygon = function() {
+      return google.maps.event.clearInstanceListeners(this.polygon);
+    };
+
+    PolygonWrapper.prototype.setEditable = function(editable) {
+      PolygonWrapper.__super__.setEditable.call(this, editable);
+      this.unbindPolygon();
+      if (this.editable) {
+        return this.bindPolygon();
+      }
     };
 
     PolygonWrapper.prototype.clickPolygon = function(this_, polygon, ev) {

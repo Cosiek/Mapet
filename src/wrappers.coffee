@@ -5,6 +5,7 @@
 class MapObjectWrapper
     parent: null;
     selected: false;
+    editable: true;
 
     constructor: (parent, options) ->
         @.parent = parent
@@ -171,6 +172,9 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         opts = @.getMarkerOptions(options)
         marker.setOptions(opts)
 
+    getDrawHelperMarker: ->
+        return @.selected and @.editable
+
     # bindings ------------------------
 
     bindMarker: (marker) ->
@@ -192,6 +196,22 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
             wrapperCallbackName = eventType + 'Marker'
             @.ensureWrapperCallbackExists(wrapperCallbackName)
             bindWrapper(wrapperCallbackName)
+
+    bindMarkers: ->
+        for marker in @.markers
+            @.bindMarker(marker)
+
+    unbindMarkers: ->
+        for marker in @.markers
+            google.maps.event.clearInstanceListeners(marker)
+
+    # editable setting ----------------
+
+    setEditable: (editable) ->
+        @.editable = editable
+        @.unbindMarkers()  # this is to prevent multiple binding
+        if @.editable
+            @.bindMarkers()
 
     # callbacks -----------------------
 
@@ -300,7 +320,7 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
 
             thisPosition = thisMarker.getPosition()
 
-            if @.selected and prevMarker
+            if @.getDrawHelperMarker() and prevMarker
                 prevPosition = prevMarker.getPosition()
 
                 helperPosition = @.getHelperMarkerPosition(prevPosition, thisPosition)
@@ -315,7 +335,7 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
             i += 1
 
         # create helper marker between last and first main marker
-        if @.selected and @.mainMarkers.length > 2
+        if @.getDrawHelperMarker() and @.mainMarkers.length > 2
             prevPosition = @.mainMarkers[@.mainMarkers.length - 1].getPosition()
             thisPosition = @.mainMarkers[0].getPosition()
 
@@ -349,7 +369,7 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
     clearPolygon: ->
         if not @.polygon
             return null;
-        google.maps.event.clearInstanceListeners(@.polygon)
+        @.unbindPolygon()
         @.polygon.setMap(null)
         delete @.polygon
         @.polygon = null;
@@ -397,6 +417,17 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
             wrapperCallbackName = eventType + 'Polygon'
             @.ensureWrapperCallbackExists(wrapperCallbackName)
             bindWrapper(wrapperCallbackName)
+
+    unbindPolygon: ->
+        google.maps.event.clearInstanceListeners(@.polygon)
+
+    # editable setting ----------------
+
+    setEditable: (editable) ->
+        super(editable)
+        @.unbindPolygon()  # this is to prevent multiple binding
+        if @.editable
+            @.bindPolygon()
 
     # callbacks -----------------------
 
