@@ -54,70 +54,6 @@ class Mode
             marker.setMap(null)
             google.maps.event.clearInstanceListeners(marker)
 
-# Task specific work modes ---------------------------------------------------
-
-class MarkersMode extends Mode
-    markers: []
-
-    removableMarkers: true;
-
-    on_click: (point) ->
-        # insert a marker at given position
-        marker = @.createMarker(point.latLng)
-
-        # bind marker events
-        if @.removableMarkers
-            google.maps.event.addListener(marker, 'rightclick', =>
-                @.removeMarker(marker)
-            )
-
-        # add marker to list
-        @.markers.push(marker)
-        return marker
-
-    removeMarker: (marker) ->
-        # remove marker from markers list
-        idx = @.markers.indexOf(marker)
-        @.markers.splice(idx, 1)
-
-        # remove marker from map
-        super(marker)
-
-    clear: ->
-        while @.markers.length
-            marker = @.markers[@.markers.length - 1]
-            @.removeMarker(marker)
-
-    getValue: ->
-        positions = []
-        for marker in @.markers
-            markerPosition = marker.getPosition()
-            positions.push([markerPosition.lat(), markerPosition.lng()])
-        return positions
-
-    drawFromInitialData: (data) ->
-        ###
-        Example data is:
-        {
-            'coords': [[51.51, 23.23, {attr: 'optional'}], [52.00, 23.00]],
-            'options': {draggable:false}, v
-            'callbacks': {'click': (arg) -> console.log('klik ' + arg)}
-        }
-        If data has no 'coords' attribute, then assume it is just a list of
-        coordinates (like: [[51.51, 23.23, {attr: 'optional'}], [52.00, 23.00]])
-        ###
-        if not data.coords
-            coords = data
-        else
-            coords = data.coords
-
-        for coord in coords
-            marker = @.createMarker(coord, data.options, data.callbacks)
-            if coord[2]
-                for attr of coord[2]
-                    marker[attr] = coord[2][attr]
-            @.markers.push(marker)
-
 
 class WrappersBaseMode extends Mode
     wrappers: []
@@ -204,11 +140,82 @@ class WrappersBaseMode extends Mode
         wrapper.clear()
         @.wrappers.splice(@.wrappers.indexOf(wrapper), 1)
 
+# Task specific work modes ---------------------------------------------------
+
+class MarkersMode extends Mode
+    markers: []
+
+    removableMarkers: true;
+
+    on_click: (point) ->
+        # insert a marker at given position
+        marker = @.createMarker(point.latLng)
+
+        # bind marker events
+        if @.removableMarkers
+            google.maps.event.addListener(marker, 'rightclick', =>
+                @.removeMarker(marker)
+            )
+
+        # add marker to list
+        @.markers.push(marker)
+        return marker
+
+    removeMarker: (marker) ->
+        # remove marker from markers list
+        idx = @.markers.indexOf(marker)
+        @.markers.splice(idx, 1)
+
+        # remove marker from map
+        super(marker)
+
+    clear: ->
+        while @.markers.length
+            marker = @.markers[@.markers.length - 1]
+            @.removeMarker(marker)
+
+    getValue: ->
+        positions = []
+        for marker in @.markers
+            markerPosition = marker.getPosition()
+            positions.push([markerPosition.lat(), markerPosition.lng()])
+        return positions
+
+    drawFromInitialData: (data) ->
+        ###
+        Example data is:
+        {
+            'coords': [[51.51, 23.23, {attr: 'optional'}], [52.00, 23.00]],
+            'options': {draggable:false}, v
+            'callbacks': {'click': (arg) -> console.log('klik ' + arg)}
+        }
+        If data has no 'coords' attribute, then assume it is just a list of
+        coordinates (like: [[51.51, 23.23, {attr: 'optional'}], [52.00, 23.00]])
+        ###
+        if not data.coords
+            coords = data
+        else
+            coords = data.coords
+
+        for coord in coords
+            marker = @.createMarker(coord, data.options, data.callbacks)
+            if coord[2]
+                for attr of coord[2]
+                    marker[attr] = coord[2][attr]
+            @.markers.push(marker)
+
 
 class PolygonMode extends WrappersBaseMode
 
     getNewWrapper: (options={}) ->
         return new PolygonWrapper(@, options)
+
+
+class PolylineMode extends WrappersBaseMode
+
+    getNewWrapper: (options={}) ->
+        return new PolylineWrapper(@, options)
+
 
 # Main map handler -----------------------------------------------------------
 
@@ -228,6 +235,7 @@ class MapHandler
         'BaseMode': Mode,
         'MarkersMode': MarkersMode,
         'PolygonMode': PolygonMode,
+        'PolylineMode': PolylineMode,
     }
     modes: {}
     handler: null;  # just for convenience

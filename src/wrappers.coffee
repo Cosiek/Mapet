@@ -453,5 +453,15 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
         @bindObject()
 
 
+class PolylineWrapper extends MultipleMarkersDrawnWrapper
+
+    # map elements manipulation -------
+
+    createObject: (path) ->
+        options = @getObjectOptions({'path': path})
+        @.object = new google.maps.Polyline(options)
+        @bindObject()
+
 # export
 window.PolygonWrapper = PolygonWrapper
+window.PolylineWrapper = PolylineWrapper
