@@ -189,6 +189,7 @@
         wrapper = new PolygonWrapper(this, {
           'selected': false
         });
+        wrapper.drawFromInitialData(data);
         results.push(this.wrappers.push(wrapper));
       }
       return results;

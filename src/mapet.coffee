@@ -129,6 +129,7 @@ class PolygonMode extends Mode
     drawFromInitialData: (data) ->
         for polygonData in data
             wrapper = new PolygonWrapper(@, {'selected': false})
+            wrapper.drawFromInitialData(data)
             @.wrappers.push(wrapper)
 
     getValue: ->
@@ -187,7 +188,7 @@ class PolygonMode extends Mode
         @.selected = null;
 
     setEditable: (editable) ->
-        @editable = editable
+        @.editable = editable
         if @.editable
             for wrapper in @.wrappers
                 wrapper.setEditable(true)
