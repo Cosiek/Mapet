@@ -111,6 +111,45 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         for marker in clearMarkers
             @.clearMarker(marker)
 
+    drawMarkers: (closePath=false) ->
+        i = 0
+        pathPoints = []
+        markers = []
+        # other markers
+        while i < @.mainMarkers.length
+            prevMarker = @.mainMarkers[i - 1]
+            thisMarker = @.mainMarkers[i]
+
+            thisPosition = thisMarker.getPosition()
+
+            if @.getDrawHelperMarker() and prevMarker
+                prevPosition = prevMarker.getPosition()
+
+                helperPosition = @.getHelperMarkerPosition(prevPosition, thisPosition)
+                helperMarker = @.createHelperMarker(helperPosition)
+                markers.push(helperMarker)
+
+            pathPoints.push(thisPosition)
+            markers.push(thisMarker)
+
+            @.updateMarkerOptions(thisMarker)
+
+            i += 1
+
+        # create helper marker between last and first main marker
+        # (only if closePath is true)
+        if closePath and @.getDrawHelperMarker() and @.mainMarkers.length > 2
+            prevPosition = @.mainMarkers[@.mainMarkers.length - 1].getPosition()
+            thisPosition = @.mainMarkers[0].getPosition()
+
+            helperPosition = @.getHelperMarkerPosition(prevPosition, thisPosition)
+            helperMarker = @.createHelperMarker(helperPosition)
+            markers.push(helperMarker)
+
+        @.markers = markers
+
+        return pathPoints
+
     # map elements manipulation -------
 
     crateMarker: (position) ->
@@ -310,40 +349,7 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
             @.clearPolygon()
             return null;
 
-        i = 0
-        pathPoints = []
-        markers = []
-        # other markers
-        while i < @.mainMarkers.length
-            prevMarker = @.mainMarkers[i - 1]
-            thisMarker = @.mainMarkers[i]
-
-            thisPosition = thisMarker.getPosition()
-
-            if @.getDrawHelperMarker() and prevMarker
-                prevPosition = prevMarker.getPosition()
-
-                helperPosition = @.getHelperMarkerPosition(prevPosition, thisPosition)
-                helperMarker = @.createHelperMarker(helperPosition)
-                markers.push(helperMarker)
-
-            pathPoints.push(thisPosition)
-            markers.push(thisMarker)
-
-            @.updateMarkerOptions(thisMarker)
-
-            i += 1
-
-        # create helper marker between last and first main marker
-        if @.getDrawHelperMarker() and @.mainMarkers.length > 2
-            prevPosition = @.mainMarkers[@.mainMarkers.length - 1].getPosition()
-            thisPosition = @.mainMarkers[0].getPosition()
-
-            helperPosition = @.getHelperMarkerPosition(prevPosition, thisPosition)
-            helperMarker = @.createHelperMarker(helperPosition)
-            markers.push(helperMarker)
-
-        @.markers = markers
+        pathPoints = @.drawMarkers(true)
 
         # create / update polygon
         if not @.polygon

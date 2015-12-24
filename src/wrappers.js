@@ -145,6 +145,40 @@
       return results;
     };
 
+    MultipleMarkersDrawnWrapper.prototype.drawMarkers = function(closePath) {
+      var helperMarker, helperPosition, i, markers, pathPoints, prevMarker, prevPosition, thisMarker, thisPosition;
+      if (closePath == null) {
+        closePath = false;
+      }
+      i = 0;
+      pathPoints = [];
+      markers = [];
+      while (i < this.mainMarkers.length) {
+        prevMarker = this.mainMarkers[i - 1];
+        thisMarker = this.mainMarkers[i];
+        thisPosition = thisMarker.getPosition();
+        if (this.getDrawHelperMarker() && prevMarker) {
+          prevPosition = prevMarker.getPosition();
+          helperPosition = this.getHelperMarkerPosition(prevPosition, thisPosition);
+          helperMarker = this.createHelperMarker(helperPosition);
+          markers.push(helperMarker);
+        }
+        pathPoints.push(thisPosition);
+        markers.push(thisMarker);
+        this.updateMarkerOptions(thisMarker);
+        i += 1;
+      }
+      if (closePath && this.getDrawHelperMarker() && this.mainMarkers.length > 2) {
+        prevPosition = this.mainMarkers[this.mainMarkers.length - 1].getPosition();
+        thisPosition = this.mainMarkers[0].getPosition();
+        helperPosition = this.getHelperMarkerPosition(prevPosition, thisPosition);
+        helperMarker = this.createHelperMarker(helperPosition);
+        markers.push(helperMarker);
+      }
+      this.markers = markers;
+      return pathPoints;
+    };
+
     MultipleMarkersDrawnWrapper.prototype.crateMarker = function(position) {
       var marker, options;
       options = this.getMarkerOptions({
@@ -367,38 +401,13 @@
     };
 
     PolygonWrapper.prototype.redraw = function() {
-      var helperMarker, helperPosition, i, markers, pathPoints, prevMarker, prevPosition, thisMarker, thisPosition;
+      var pathPoints;
       this.clearHelperMarkers();
       if (this.mainMarkers.length < 2) {
         this.clearPolygon();
         return null;
       }
-      i = 0;
-      pathPoints = [];
-      markers = [];
-      while (i < this.mainMarkers.length) {
-        prevMarker = this.mainMarkers[i - 1];
-        thisMarker = this.mainMarkers[i];
-        thisPosition = thisMarker.getPosition();
-        if (this.getDrawHelperMarker() && prevMarker) {
-          prevPosition = prevMarker.getPosition();
-          helperPosition = this.getHelperMarkerPosition(prevPosition, thisPosition);
-          helperMarker = this.createHelperMarker(helperPosition);
-          markers.push(helperMarker);
-        }
-        pathPoints.push(thisPosition);
-        markers.push(thisMarker);
-        this.updateMarkerOptions(thisMarker);
-        i += 1;
-      }
-      if (this.getDrawHelperMarker() && this.mainMarkers.length > 2) {
-        prevPosition = this.mainMarkers[this.mainMarkers.length - 1].getPosition();
-        thisPosition = this.mainMarkers[0].getPosition();
-        helperPosition = this.getHelperMarkerPosition(prevPosition, thisPosition);
-        helperMarker = this.createHelperMarker(helperPosition);
-        markers.push(helperMarker);
-      }
-      this.markers = markers;
+      pathPoints = this.drawMarkers(true);
       if (!this.polygon) {
         return this.createPolygon(pathPoints);
       } else {
