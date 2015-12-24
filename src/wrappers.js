@@ -64,6 +64,21 @@
       'draggable': true
     };
 
+    MultipleMarkersDrawnWrapper.prototype.objectOptions = {
+      strokeColor: '#0000CC',
+      strokeWeight: 1,
+      editable: false,
+      draggable: false,
+      geodesic: false
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.objectOptionsWhenSelected = {
+      strokeColor: '#FF0000',
+      strokeWeight: 2
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.objectEventTypes = ['click', 'dblclick', 'rightclick', 'drag', 'dragend', 'dragstart', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup'];
+
     function MultipleMarkersDrawnWrapper(parent, options) {
       if (options == null) {
         options = {};
@@ -104,7 +119,20 @@
     };
 
     MultipleMarkersDrawnWrapper.prototype.redraw = function() {
-      return alert('redraw is not implemented');
+      var pathPoints;
+      this.clearHelperMarkers();
+      if (this.mainMarkers.length < 2) {
+        this.clearObject();
+        return null;
+      }
+      pathPoints = this.drawMarkers(false);
+      if (!this.object) {
+        return this.createObject(pathPoints);
+      } else {
+        return this.updateObjectOptions({
+          path: pathPoints
+        });
+      }
     };
 
     MultipleMarkersDrawnWrapper.prototype.clear = function() {
@@ -112,19 +140,19 @@
         this.clearMarker(this.markers[0]);
       }
       this.mainMarkers = [];
-      return this.markers = [];
+      this.markers = [];
+      return this.clearObject();
     };
 
     MultipleMarkersDrawnWrapper.prototype.hide = function() {
-      var j, len, marker, ref, results;
+      var j, len, marker, ref;
       this.clearHelperMarkers();
       ref = this.markers;
-      results = [];
       for (j = 0, len = ref.length; j < len; j++) {
         marker = ref[j];
-        results.push(marker.setVisible(false));
+        marker.setVisible(false);
       }
-      return results;
+      return this.object.setVisible(false);
     };
 
     MultipleMarkersDrawnWrapper.prototype.clearHelperMarkers = function() {
@@ -212,6 +240,16 @@
       }
     };
 
+    MultipleMarkersDrawnWrapper.prototype.clearObject = function() {
+      if (!this.object) {
+        return null;
+      }
+      this.unbindObject();
+      this.object.setMap(null);
+      delete this.object;
+      return this.object = null;
+    };
+
     MultipleMarkersDrawnWrapper.prototype.getMarkerOptions = function(options) {
       var optName, opts;
       if (options == null) {
@@ -261,6 +299,34 @@
       return this.selected && this.editable;
     };
 
+    MultipleMarkersDrawnWrapper.prototype.getObjectOptions = function(options) {
+      var optName, opts;
+      if (options == null) {
+        options = {};
+      }
+      opts = {
+        'map': this.parent.map
+      };
+      for (optName in this.objectOptions) {
+        opts[optName] = this.objectOptions[optName];
+      }
+      if (this.selected) {
+        for (optName in this.objectOptionsWhenSelected) {
+          opts[optName] = this.objectOptionsWhenSelected[optName];
+        }
+      }
+      for (optName in options) {
+        opts[optName] = options[optName];
+      }
+      return opts;
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.updateObjectOptions = function(options) {
+      var opts;
+      opts = this.getObjectOptions(options);
+      return this.object.setOptions(opts);
+    };
+
     MultipleMarkersDrawnWrapper.prototype.bindMarker = function(marker) {
       var bindWrapper, eventType, eventTypes, j, len, results, wrapperCallbackName;
       eventTypes = ['click', 'dblclick', 'rightclick', 'drag', 'dragstart', 'dragend', 'mousedown', 'mouseup', 'mouseover', 'mouseout', 'position_changed', 'visible_changed'];
@@ -303,11 +369,37 @@
       return results;
     };
 
+    MultipleMarkersDrawnWrapper.prototype.bindObject = function() {
+      var bindWrapper, eventType, j, len, ref, results, wrapperCallbackName;
+      bindWrapper = (function(_this) {
+        return function(callbackName) {
+          return google.maps.event.addListener(_this.object, eventType, function(arg) {
+            return _this[callbackName](_this, _this.object, arg);
+          });
+        };
+      })(this);
+      ref = this.objectEventTypes;
+      results = [];
+      for (j = 0, len = ref.length; j < len; j++) {
+        eventType = ref[j];
+        wrapperCallbackName = eventType + 'Object';
+        this.ensureWrapperCallbackExists(wrapperCallbackName);
+        results.push(bindWrapper(wrapperCallbackName));
+      }
+      return results;
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.unbindObject = function() {
+      return google.maps.event.clearInstanceListeners(this.object);
+    };
+
     MultipleMarkersDrawnWrapper.prototype.setEditable = function(editable) {
       this.editable = editable;
       this.unbindMarkers();
+      this.unbindObject();
       if (this.editable) {
-        return this.bindMarkers();
+        this.bindMarkers();
+        return this.bindObject();
       }
     };
 
@@ -324,6 +416,19 @@
         this.refillMainMarkers();
       }
       return this_.redraw();
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.clickObject = function(this_, object, ev) {
+      if (!this_.selected) {
+        return this_.parent.select(this_);
+      } else {
+        return null;
+      }
+    };
+
+    MultipleMarkersDrawnWrapper.prototype.rightclickObject = function(this_, object, ev) {
+      this_.clear();
+      return this_.parent.removeWrapper(this_);
     };
 
     MultipleMarkersDrawnWrapper.prototype.getHelperMarkerPosition = function(positionA, positionB) {
@@ -381,7 +486,7 @@
       return PolygonWrapper.__super__.constructor.apply(this, arguments);
     }
 
-    PolygonWrapper.prototype.polygonOptions = {
+    PolygonWrapper.prototype.objectOptions = {
       strokeColor: '#0000CC',
       strokeOpacity: 0.2,
       strokeWeight: 1,
@@ -392,7 +497,7 @@
       geodesic: false
     };
 
-    PolygonWrapper.prototype.polygonOptionsWhenSelected = {
+    PolygonWrapper.prototype.objectOptionsWhenSelected = {
       strokeColor: '#FF0000',
       strokeOpacity: 0.5,
       strokeWeight: 2,
@@ -400,123 +505,19 @@
       fillOpacity: 0.35
     };
 
-    PolygonWrapper.prototype.redraw = function() {
-      var pathPoints;
-      this.clearHelperMarkers();
-      if (this.mainMarkers.length < 2) {
-        this.clearPolygon();
-        return null;
-      }
-      pathPoints = this.drawMarkers(true);
-      if (!this.polygon) {
-        return this.createPolygon(pathPoints);
-      } else {
-        return this.updatePolygonOptions({
-          path: pathPoints
-        });
-      }
+    PolygonWrapper.prototype.objectEventTypes = ['click', 'dblclick', 'rightclick', 'drag', 'dragend', 'dragstart', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup'];
+
+    PolygonWrapper.prototype.drawMarkers = function(_) {
+      return PolygonWrapper.__super__.drawMarkers.call(this, true);
     };
 
-    PolygonWrapper.prototype.clear = function() {
-      PolygonWrapper.__super__.clear.call(this);
-      return this.clearPolygon();
-    };
-
-    PolygonWrapper.prototype.hide = function() {
-      PolygonWrapper.__super__.hide.call(this);
-      return this.polygon.setVisible(false);
-    };
-
-    PolygonWrapper.prototype.createPolygon = function(path) {
+    PolygonWrapper.prototype.createObject = function(path) {
       var options;
-      options = this.getPolygonOptions({
+      options = this.getObjectOptions({
         'path': path
       });
-      this.polygon = new google.maps.Polygon(options);
-      return this.bindPolygon();
-    };
-
-    PolygonWrapper.prototype.clearPolygon = function() {
-      if (!this.polygon) {
-        return null;
-      }
-      this.unbindPolygon();
-      this.polygon.setMap(null);
-      delete this.polygon;
-      return this.polygon = null;
-    };
-
-    PolygonWrapper.prototype.getPolygonOptions = function(options) {
-      var optName, opts;
-      if (options == null) {
-        options = {};
-      }
-      opts = {
-        'map': this.parent.map
-      };
-      for (optName in this.polygonOptions) {
-        opts[optName] = this.polygonOptions[optName];
-      }
-      if (this.selected) {
-        for (optName in this.polygonOptionsWhenSelected) {
-          opts[optName] = this.polygonOptionsWhenSelected[optName];
-        }
-      }
-      for (optName in options) {
-        opts[optName] = options[optName];
-      }
-      return opts;
-    };
-
-    PolygonWrapper.prototype.updatePolygonOptions = function(options) {
-      var opts;
-      opts = this.getPolygonOptions(options);
-      return this.polygon.setOptions(opts);
-    };
-
-    PolygonWrapper.prototype.bindPolygon = function() {
-      var bindWrapper, eventType, eventTypes, j, len, results, wrapperCallbackName;
-      eventTypes = ['click', 'dblclick', 'rightclick', 'drag', 'dragend', 'dragstart', 'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup'];
-      bindWrapper = (function(_this) {
-        return function(callbackName) {
-          return google.maps.event.addListener(_this.polygon, eventType, function(arg) {
-            return _this[callbackName](_this, _this.polygon, arg);
-          });
-        };
-      })(this);
-      results = [];
-      for (j = 0, len = eventTypes.length; j < len; j++) {
-        eventType = eventTypes[j];
-        wrapperCallbackName = eventType + 'Polygon';
-        this.ensureWrapperCallbackExists(wrapperCallbackName);
-        results.push(bindWrapper(wrapperCallbackName));
-      }
-      return results;
-    };
-
-    PolygonWrapper.prototype.unbindPolygon = function() {
-      return google.maps.event.clearInstanceListeners(this.polygon);
-    };
-
-    PolygonWrapper.prototype.setEditable = function(editable) {
-      PolygonWrapper.__super__.setEditable.call(this, editable);
-      this.unbindPolygon();
-      if (this.editable) {
-        return this.bindPolygon();
-      }
-    };
-
-    PolygonWrapper.prototype.clickPolygon = function(this_, polygon, ev) {
-      if (!this_.selected) {
-        return this_.parent.select(this_);
-      } else {
-        return null;
-      }
-    };
-
-    PolygonWrapper.prototype.rightclickPolygon = function(this_, polygon, ev) {
-      this_.clear();
-      return this_.parent.removeWrapper(this_);
+      this.object = new google.maps.Polygon(options);
+      return this.bindObject();
     };
 
     return PolygonWrapper;

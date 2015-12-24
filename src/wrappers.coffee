@@ -53,6 +53,25 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         'draggable': true,
     }
 
+    objectOptions: {
+        strokeColor: '#0000CC',
+        strokeWeight: 1,
+        editable: false,
+        draggable: false,
+        geodesic: false,
+    }
+
+    objectOptionsWhenSelected: {
+        strokeColor: '#FF0000',
+        strokeWeight: 2,
+    }
+
+    objectEventTypes: [
+        'click', 'dblclick', 'rightclick'
+        'drag', 'dragend', 'dragstart',
+        'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup'
+    ]
+
     # init ----------------------------
 
     constructor: (parent, options={}) ->
@@ -88,7 +107,19 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
     # rendering -----------------------
 
     redraw: ->
-        alert('redraw is not implemented')
+        @.clearHelperMarkers()
+
+        if @.mainMarkers.length < 2
+            @.clearObject()
+            return null;
+
+        pathPoints = @.drawMarkers(false)
+
+        # create / update object
+        if not @.object
+            @.createObject(pathPoints)
+        else
+            @.updateObjectOptions({path: pathPoints})
 
     clear: ->
         while @.markers.length
@@ -97,10 +128,14 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         @.mainMarkers = []
         @.markers = []
 
+        @.clearObject()
+
     hide: ->
         @.clearHelperMarkers()
         for marker in @.markers
             marker.setVisible(false)
+
+        @.object.setVisible(false)
 
     clearHelperMarkers: ->
         clearMarkers = []
@@ -175,6 +210,14 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         if marker.mainMarker
             @.mainMarkers.splice(@.mainMarkers.indexOf(marker), 1)
 
+    clearObject: ->
+        if not @.object
+            return null;
+        @.unbindObject()
+        @.object.setMap(null)
+        delete @.object
+        @.object = null;
+
     # map elements display ------------
 
     getMarkerOptions: (options={}) ->
@@ -214,6 +257,27 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
     getDrawHelperMarker: ->
         return @.selected and @.editable
 
+    getObjectOptions: (options={}) ->
+        opts = {
+            'map': @.parent.map
+        }
+
+        for optName of @.objectOptions
+            opts[optName] = @.objectOptions[optName]
+
+        if @.selected
+            for optName of @.objectOptionsWhenSelected
+                opts[optName] = @.objectOptionsWhenSelected[optName]
+
+        for optName of options
+            opts[optName] = options[optName]
+
+        return opts
+
+    updateObjectOptions: (options) ->
+        opts = @.getObjectOptions(options)
+        @.object.setOptions(opts)
+
     # bindings ------------------------
 
     bindMarker: (marker) ->
@@ -244,13 +308,31 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         for marker in @.markers
             google.maps.event.clearInstanceListeners(marker)
 
+    bindObject: ->
+        # this is the only thing about js that really bothers me
+        bindWrapper = (callbackName) =>
+            google.maps.event.addListener(@.object, eventType, (arg) =>
+                @[callbackName](@, @.object, arg)
+            )
+
+        for eventType in @.objectEventTypes
+            # callbacks are defined on wrapper
+            wrapperCallbackName = eventType + 'Object'
+            @.ensureWrapperCallbackExists(wrapperCallbackName)
+            bindWrapper(wrapperCallbackName)
+
+    unbindObject: ->
+        google.maps.event.clearInstanceListeners(@.object)
+
     # editable setting ----------------
 
     setEditable: (editable) ->
         @.editable = editable
         @.unbindMarkers()  # this is to prevent multiple binding
+        @.unbindObject()
         if @.editable
             @.bindMarkers()
+            @.bindObject()
 
     # callbacks -----------------------
 
@@ -266,6 +348,18 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
             marker.mainMarker = true;
             @.refillMainMarkers()
         this_.redraw()
+
+    clickObject: (this_, object, ev) ->
+        if not this_.selected
+            this_.parent.select(this_)
+        else
+            # TODO - pass event to map
+            null;
+
+    rightclickObject: (this_, object, ev) ->
+        # remove this object (and wrapper)
+        this_.clear()
+        this_.parent.removeWrapper(this_)
 
     # helper functions ----------------
 
@@ -321,7 +415,7 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
 
 class PolygonWrapper extends MultipleMarkersDrawnWrapper
 
-    polygonOptions: {
+    objectOptions: {
         strokeColor: '#0000CC',
         strokeOpacity: 0.2,
         strokeWeight: 1,
@@ -332,7 +426,7 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
         geodesic: false,
     }
 
-    polygonOptionsWhenSelected: {
+    objectOptionsWhenSelected: {
         strokeColor: '#FF0000',
         strokeOpacity: 0.5,
         strokeWeight: 2,
@@ -340,114 +434,24 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
         fillOpacity: 0.35,
     }
 
+    objectEventTypes: [
+        'click', 'dblclick', 'rightclick'
+        'drag', 'dragend', 'dragstart',
+        'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup'
+    ]
+
     # rendering -----------------------
 
-    redraw: ->
-        @.clearHelperMarkers()
-
-        if @.mainMarkers.length < 2
-            @.clearPolygon()
-            return null;
-
-        pathPoints = @.drawMarkers(true)
-
-        # create / update polygon
-        if not @.polygon
-            @.createPolygon(pathPoints)
-        else
-            @.updatePolygonOptions({path: pathPoints})
-
-    clear: ->
-        super()
-        @.clearPolygon()
-
-    hide: ->
-        super()
-        @.polygon.setVisible(false)
+    drawMarkers: (_) ->
+        return super(true)
 
     # map elements manipulation -------
 
-    createPolygon: (path) ->
-        options = @getPolygonOptions({'path': path})
-        @.polygon = new google.maps.Polygon(options)
-        @bindPolygon()
+    createObject: (path) ->
+        options = @getObjectOptions({'path': path})
+        @.object = new google.maps.Polygon(options)
+        @bindObject()
 
-    clearPolygon: ->
-        if not @.polygon
-            return null;
-        @.unbindPolygon()
-        @.polygon.setMap(null)
-        delete @.polygon
-        @.polygon = null;
-
-    # map elements display ------------
-
-    getPolygonOptions: (options={}) ->
-        opts = {
-            'map': @.parent.map
-        }
-
-        for optName of @.polygonOptions
-            opts[optName] = @.polygonOptions[optName]
-
-        if @.selected
-            for optName of @.polygonOptionsWhenSelected
-                opts[optName] = @.polygonOptionsWhenSelected[optName]
-
-        for optName of options
-            opts[optName] = options[optName]
-
-        return opts
-
-    updatePolygonOptions: (options) ->
-        opts = @.getPolygonOptions(options)
-        @.polygon.setOptions(opts)
-
-    # bindings ------------------------
-
-    bindPolygon: ->
-        eventTypes = [
-            'click', 'dblclick', 'rightclick'
-            'drag', 'dragend', 'dragstart',
-            'mousedown', 'mousemove', 'mouseout', 'mouseover', 'mouseup'
-        ]
-
-        # this is the only thing about js that really bothers me
-        bindWrapper = (callbackName) =>
-            google.maps.event.addListener(@.polygon, eventType, (arg) =>
-                @[callbackName](@, @.polygon, arg)
-            )
-
-        for eventType in eventTypes
-            # callbacks are defined on wrapper
-            wrapperCallbackName = eventType + 'Polygon'
-            @.ensureWrapperCallbackExists(wrapperCallbackName)
-            bindWrapper(wrapperCallbackName)
-
-    unbindPolygon: ->
-        google.maps.event.clearInstanceListeners(@.polygon)
-
-    # editable setting ----------------
-
-    setEditable: (editable) ->
-        super(editable)
-        @.unbindPolygon()  # this is to prevent multiple binding
-        if @.editable
-            @.bindPolygon()
-
-    # callbacks -----------------------
-
-    clickPolygon: (this_, polygon, ev) ->
-        if not this_.selected
-            this_.parent.select(this_)
-        else
-            # TODO - pass event to map
-            null;
-
-    rightclickPolygon: (this_, polygon, ev) ->
-        # remove this polygon (and wrapper)
-        this_.clear()
-        this_.parent.removeWrapper(this_)
 
 # export
 window.PolygonWrapper = PolygonWrapper
