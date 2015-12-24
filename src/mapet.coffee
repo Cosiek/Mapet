@@ -119,7 +119,7 @@ class MarkersMode extends Mode
             @.markers.push(marker)
 
 
-class PolygonMode extends Mode
+class WrappersBaseMode extends Mode
     wrappers: []
     selected: null;
     editable: true;
@@ -128,7 +128,7 @@ class PolygonMode extends Mode
 
     drawFromInitialData: (data) ->
         for polygonData in data
-            wrapper = new PolygonWrapper(@, {'selected': false})
+            wrapper = @.getNewWrapper({'selected': false})
             wrapper.drawFromInitialData(data)
             @.wrappers.push(wrapper)
 
@@ -142,12 +142,12 @@ class PolygonMode extends Mode
 
     on_click: (ev) ->
         if @.selected
-            # if any polygon is selected, then pass a marker to it
+            # if any wrapper is selected, then pass a marker to it
             @.selected.crateMarker(ev.latLng)
             @.selected.redraw()
         else
-            # otherwise create new polygon
-            wrapper = new PolygonWrapper(@)
+            # otherwise create new wrapper
+            wrapper = @.getNewWrapper()
             wrapper.crateMarker(ev.latLng)
             @.wrappers.push(wrapper)
             @.select(wrapper)
@@ -197,9 +197,18 @@ class PolygonMode extends Mode
             for wrapper in @.wrappers
                 wrapper.setEditable(false)
 
+    getNewWrapper: (options) ->
+        alert('getNewWrapper is not implemented')
+
     removeWrapper: (wrapper) ->
         wrapper.clear()
         @.wrappers.splice(@.wrappers.indexOf(wrapper), 1)
+
+
+class PolygonMode extends WrappersBaseMode
+
+    getNewWrapper: (options={}) ->
+        return new PolygonWrapper(@, options)
 
 # Main map handler -----------------------------------------------------------
 
