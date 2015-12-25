@@ -196,6 +196,9 @@
 
     WrappersBaseMode.prototype.removeWrapper = function(wrapper) {
       wrapper.clear();
+      if (wrapper.selected) {
+        this.selected = null;
+      }
       return this.wrappers.splice(this.wrappers.indexOf(wrapper), 1);
     };
 

@@ -358,7 +358,6 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
 
     rightclickObject: (this_, object, ev) ->
         # remove this object (and wrapper)
-        this_.clear()
         this_.parent.removeWrapper(this_)
 
     # helper functions ----------------

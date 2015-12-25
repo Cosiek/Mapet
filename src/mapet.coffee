@@ -138,6 +138,8 @@ class WrappersBaseMode extends Mode
 
     removeWrapper: (wrapper) ->
         wrapper.clear()
+        if wrapper.selected
+            @.selected = null;
         @.wrappers.splice(@.wrappers.indexOf(wrapper), 1)
 
 # Task specific work modes ---------------------------------------------------

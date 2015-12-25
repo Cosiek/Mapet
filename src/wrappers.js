@@ -427,7 +427,6 @@
     };
 
     MultipleMarkersDrawnWrapper.prototype.rightclickObject = function(this_, object, ev) {
-      this_.clear();
       return this_.parent.removeWrapper(this_);
     };
 
