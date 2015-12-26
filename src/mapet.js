@@ -332,20 +332,11 @@
 
   })(WrappersBaseMode);
 
-  MapHandler = (function() {
-    function MapHandler() {}
 
-    MapHandler.prototype.map = null;
 
-    MapHandler.prototype.mapContainerSelector = '#map-container';
 
-    MapHandler.prototype.initialMapOptions = {
-      center: new google.maps.LatLng(52.21885952070011, 20.983983278274536),
-      zoom: 18,
-      mapTypeId: google.maps.MapTypeId.ROADMAP
     };
 
-    MapHandler.prototype.mode = 'none';
 
     MapHandler.prototype.availableModes = {
       'BaseMode': Mode,
@@ -354,13 +345,20 @@
       'PolylineMode': PolylineMode
     };
 
-    MapHandler.prototype.modes = {};
-
-    MapHandler.prototype.handler = null;
-
-    MapHandler.prototype.editable = true;
-
-    MapHandler.prototype.delayedEventsTimeout = 1000;
+    function MapHandler() {
+      this.map = null;
+      this.mapContainerSelector = '#map-container';
+      this.initialMapOptions = {
+        center: new google.maps.LatLng(52.21885952070011, 20.983983278274536),
+        zoom: 18,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+      };
+      this.mode = 'none';
+      this.modes = {};
+      this.handler = null;
+      this.editable = true;
+      this.delayedEventsTimeout = 1000;
+    }
 
     MapHandler.prototype.initializeMap = function(mapContainerSelector) {
       var className, id, mapContainer;

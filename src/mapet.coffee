@@ -222,29 +222,33 @@ class PolylineMode extends WrappersBaseMode
 # Main map handler -----------------------------------------------------------
 
 class MapHandler
-    # map stuff
-    map: null;
-    mapContainerSelector: '#map-container'
-    initialMapOptions: {
-        center: new google.maps.LatLng(52.21885952070011, 20.983983278274536),
-        zoom: 18,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    }
 
     # work modes
-    mode: 'none'
     availableModes: {
         'BaseMode': Mode,
         'MarkersMode': MarkersMode,
         'PolygonMode': PolygonMode,
         'PolylineMode': PolylineMode,
     }
-    modes: {}
-    handler: null;  # just for convenience
 
-    editable: true;
+    constructor: ->
+        # map stuff
+        @map = null;
+        @mapContainerSelector = '#map-container'
+        @.initialMapOptions = {
+            center: new google.maps.LatLng(52.21885952070011, 20.983983278274536),
+            zoom: 18,
+            mapTypeId: google.maps.MapTypeId.ROADMAP
+        }
 
-    delayedEventsTimeout: 1000
+        # modes stuff
+        @.mode = 'none'
+        @.modes = {}
+        @.handler = null;
+
+        # behaviour controllers
+        @.editable = true;
+        @.delayedEventsTimeout = 1000
 
     initializeMap: (mapContainerSelector) ->
         mapContainerSelector = mapContainerSelector or @.mapContainerSelector
