@@ -454,6 +454,19 @@ class PolygonWrapper extends MultipleMarkersDrawnWrapper
 
 class PolylineWrapper extends MultipleMarkersDrawnWrapper
 
+    objectOptions: {
+        strokeColor: '#0000CC',
+        strokeWeight: 5,
+        editable: false,
+        draggable: false,
+        geodesic: false,
+    }
+
+    objectOptionsWhenSelected: {
+        strokeColor: '#FF0000',
+        strokeWeight: 5,
+    }
+
     # map elements manipulation -------
 
     createObject: (path) ->

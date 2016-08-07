@@ -530,6 +530,19 @@
       return PolylineWrapper.__super__.constructor.apply(this, arguments);
     }
 
+    PolylineWrapper.prototype.objectOptions = {
+      strokeColor: '#0000CC',
+      strokeWeight: 5,
+      editable: false,
+      draggable: false,
+      geodesic: false
+    };
+
+    PolylineWrapper.prototype.objectOptionsWhenSelected = {
+      strokeColor: '#FF0000',
+      strokeWeight: 5
+    };
+
     PolylineWrapper.prototype.createObject = function(path) {
       var options;
       options = this.getObjectOptions({
