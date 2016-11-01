@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head lang="en">
+		<meta charset="UTF-8">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		<script type="text/javascript"
+			src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBCzE8_trkkFKSyVl3n6fMkhMAK2g3ENn4">
+		</script>
+		<script src="../src/wrappers.js"></script>
+		<script src="../src/mapet.js"></script>
+	</head>
+	<body>
+
+		<div id="map-container" class="js-map-container" style="width:95%;height:400px;background-color:red"></div>
+		<div id="data-container"></div>
+		<button id="reload-data">Reload markers positions</button>
+		<script>
+			mapHandler = new window.MapHandler();
+			mapHandler.initializeMap();
+			mapHandler.changeMode('route', 'RouteMode');
+
+			$('#reload-data').on('click', function(){
+				serialized = JSON.stringify(mapHandler.handler.getValue());
+				$('#data-container').text(serialized);
+			})
+		</script>
+	</body>
+</html>

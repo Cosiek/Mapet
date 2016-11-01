@@ -219,6 +219,30 @@ class PolylineMode extends WrappersBaseMode
         return new PolylineWrapper(@, options)
 
 
+class RouteMode extends WrappersBaseMode
+
+    constructor: ->
+        @.useGoogleDirections = false;
+        @.tmpUseGoogleDirections = false;
+        @.directionsService = new google.maps.DirectionsService()
+
+    getNewWrapper: (options={}) ->
+        return new RouteWrapper(@, options)
+
+    # events handling -----------------
+
+    on_click: (ev) ->
+        # check pressed keys to see if reversed useGoogleDirections should
+        # be used
+        if 1#ev.altKey
+            @.tmpUseGoogleDirections = ! @.useGoogleDirections
+
+        super(ev)
+
+        # set tmpUseGoogleDirections back to its value
+        @.tmpUseGoogleDirections = @.useGoogleDirections
+
+
 # Main map handler -----------------------------------------------------------
 
 class MapHandler
@@ -229,6 +253,7 @@ class MapHandler
         'MarkersMode': MarkersMode,
         'PolygonMode': PolygonMode,
         'PolylineMode': PolylineMode,
+        'RouteMode': RouteMode,
     }
 
     constructor: ->
@@ -381,5 +406,6 @@ class MapHandler
     setEditable: (editable) ->
         if @.handler
             @.handler.setEditable(editable)
+
 
 window.MapHandler = MapHandler

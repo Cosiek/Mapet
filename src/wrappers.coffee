@@ -474,6 +474,250 @@ class PolylineWrapper extends MultipleMarkersDrawnWrapper
         @.object = new google.maps.Polyline(options)
         @bindObject()
 
+
+class RouteWrapper extends PolylineWrapper
+
+    travelMode: google.maps.TravelMode.DRIVING
+
+    # init ----------------------------
+
+    constructor: (parent, options={}) ->
+        # this is just for easy usage
+        @.directionsService = parent.directionsService
+
+        # and this has some deeper meaning
+        @.directionsCache = {}
+
+        super(parent, options)
+
+        @.messages = {}
+        @.setMessages()
+
+    setMessages: ->
+        @.messages[google.maps.DirectionsStatus.ZERO_RESULTS] = "Nie znaleziono trasy - rysuję linię prostą"
+
+    # data operations -----------------
+
+    drawFromInitialData: (data) ->
+        for point in data
+            position = new google.maps.LatLng(point[0], point[1])
+            @.createMarker(position)
+
+        @.redraw()
+
+    isValid: ->
+        # TODO - check if all google directions are already loaded
+        if @.mainMarkers.length > 2
+            return true;
+
+        return false;
+
+    # rendering -----------------------
+
+    drawMarkers: ->
+        pathPoints = []
+        markers = []
+        # add first marker
+        if @.mainMarkers.length > 1
+            markers.push(@.mainMarkers[0])
+            #pathPoints.push(@.mainMarkers[0].getPosition())
+        else
+            return []
+
+        # iterate main markers
+        i = 1
+        while i < @.mainMarkers.length
+            prevMarker = @.mainMarkers[i - 1]
+            thisMarker = @.mainMarkers[i]
+            nextMarker = @.mainMarkers[i + 1]
+
+            # if marker is google directions
+            if thisMarker.useGoogleDirections
+                pathPart = @.getGooglePath(prevMarker, thisMarker, nextMarker)
+                if pathPart
+                    for point in pathPart
+                        pathPoints.push(point)
+                else
+                    # this means that we need to wait for directions to be
+                    # loaded from google.
+                    return [];
+            # add handle marker
+            #handleMarker = @.addHandleMarker(pathPart)
+            #if handleMarker
+            #    markers.push(handleMarker)
+
+            #pathPoints.push(thisMarker.getPosition())
+            markers.push(thisMarker)
+            i += 1
+
+        @.markers = markers
+        return pathPoints
+
+
+    # map elements manipulation -------
+
+    crateMarker: (position) ->
+        super(position)
+
+        marker = @.mainMarkers[@mainMarkers.length-1]
+        marker.useGoogleDirections = @.parent.tmpUseGoogleDirections
+
+    # directions helpers --------------
+
+    getGooglePath: (mark1, mark2, mark3) ->
+        pos1 = mark1.getPosition()
+        pos2 = mark2.getPosition()
+        pos3 = if mark3 then mark3.getPosition() else null;
+
+        # check the cache
+        [cacheKey, cacheKey2] = @.getDirectionsCacheKey(pos1, pos2, pos3)
+        path = @.directionsCache[cacheKey]
+
+        # return path if there is one
+        if path
+            return path
+
+        # otherwise, get path from google
+        # prepare request
+        request = {
+            origin: pos1,
+            destination: pos2,
+            travelMode: google.maps.TravelMode[@.travelMode]
+            optimizeWaypoints: false,
+            provideRouteAlternatives: false,
+            region: 'pl',
+        }
+
+        # modify request if mark3 is given, and no path is found between
+        # mark2 and mark3 - use route with waypoint instead of two
+        # requests to google
+        if pos3
+            request.destination = pos3
+            request.waypoints = [{location:pos2, stopover:false},]
+
+        # finally ask google
+        _this = @
+        @.directionsService.route(request, (response, status) ->
+            if status == google.maps.DirectionsStatus.OK
+                # write result to local cache
+                [path, path2] = _this.googleResponceToPath(response)
+                _this.directionsCache[cacheKey] = path
+
+                if path2.length
+                    _this.directionsCache[cacheKey2] = path2
+
+                # handle additional response information
+                # (google requirement)
+                _this.displayResponseExtras(response)
+
+                _this.redraw()
+            else
+                # if no path was found, (or something else went wrong)
+                # set marker 2 to use straight lines instead of google
+                # directions...
+                mark2.useGoogleDirections = false;
+                # ...and tell the user that nothing was found
+                _this.displayDirectionsWarning(status)
+        )
+
+    displayDirectionsWarning: (status) ->
+        msg = @.messages[status]
+        return null; # TODO
+
+    displayResponseExtras: (response) ->
+        return null; # TODO
+
+    googleResponceToPath: (response) ->
+        path = []
+        path2 = []
+
+        # just to shorten some code lines
+        route = response.routes[0]
+
+        if route.legs[0].via_waypoint.length
+            waypointStepIdx = route.legs[0].via_waypoint[0].step_index
+
+            idx = 0
+            for step in route.legs[0].steps
+                if idx <= waypointStepIdx
+                    for point in step.path
+                        path.push(point)
+                else
+                    for point in step.path
+                        path2.push(point)
+                idx += 1
+        else
+            for point in route.overview_path
+                path.push(point)
+
+        return [path, path2]
+
+    getDirectionsCacheKey: (pos1, pos2, pos3) ->
+        cacheKey = "#{pos1}:#{pos1}-#{pos2}:#{pos2}"
+        if pos3
+            cacheKey2 = "#{pos2}:#{pos2}-#{pos3}:#{pos3}"
+            return [cacheKey, cacheKey2]
+        else
+            return [cacheKey, null]
+
+    # handle markers ------------------
+
+    addHandleMarker: (pathPart) ->
+        return
+        if not @.getDrawHelperMarker()
+            return null;
+
+        if pathPart.length == 2
+            position = @.getHelperMarkerPosition(pathPart[0], pathPart[1])
+        else
+            # get total distance of path part
+            totalDistance = 0
+            distances = [0]
+            i = 1
+            # iterate
+            while i < pathPart.length
+                distance = 1 #@.getDistance(pos1, pos2)
+                totalDistance += distance
+                distances.push(totalDistance)
+                i += 1
+
+            markerDistance = totalDistance / 2
+            i = 1
+            while i < distances.length
+                if distances[i] > markerDistance
+                    pos1 = pathPart[i-1]
+                    pos2 = pathPart[i]
+                    dist = markerDistance - distances[i-1]
+                    position = @.getHandleMarkerPositionWithDistance(pos1, pos2, dist)
+                    break
+                i += 1
+
+        handleMarker = @.createHelperMarker(position)
+        return handleMarker
+
+    getHandleMarkerPositionWithDistance: (pos1, pos2, dist) ->
+        null;
+
+    getPointOnSection = (section, pt1ToFullKmDistance, ithKilometer) ->
+        deltaLon = Number(section.endPoint['lon']) - Number(section.startPoint['lon'])
+        deltaLat = Number(section.endPoint['lat']) - Number(section.startPoint['lat'])
+
+        sectionDistance = get2PointsDistance(section.startPoint, section.endPoint)
+        pt1ToIthKmDistance = pt1ToFullKmDistance + ithKilometer
+
+        lon = Math.abs(deltaLon) * pt1ToIthKmDistance / sectionDistance
+        lat = Math.abs(deltaLat) * pt1ToIthKmDistance / sectionDistance
+
+        if deltaLon < 0
+            lon = lon * -1
+
+        if deltaLat < 0
+            lat = lat * -1
+
+        return [Number(section.startPoint['lat']) + lat, Number(section.startPoint['lon']) + lon]
+
+
 # export
 window.PolygonWrapper = PolygonWrapper
 window.PolylineWrapper = PolylineWrapper
+window.RouteWrapper = RouteWrapper
