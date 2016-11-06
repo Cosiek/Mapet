@@ -422,7 +422,7 @@
       if (!this_.selected) {
         return this_.parent.select(this_);
       } else {
-        return null;
+        return google.maps.event.trigger(this.parent.map, 'click', ev);
       }
     };
 

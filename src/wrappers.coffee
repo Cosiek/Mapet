@@ -353,8 +353,8 @@ class MultipleMarkersDrawnWrapper extends MapObjectWrapper
         if not this_.selected
             this_.parent.select(this_)
         else
-            # TODO - pass event to map
-            null;
+            # pass event to map
+            google.maps.event.trigger(@.parent.map, 'click', ev)
 
     rightclickObject: (this_, object, ev) ->
         # remove this object (and wrapper)
