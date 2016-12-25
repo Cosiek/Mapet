@@ -493,7 +493,7 @@ class RouteWrapper extends PolylineWrapper
         @.messages = {}
         @.setMessages()
 
-        @.googleRoueSearchesInProgresss = {}
+        @.roueSearchesInProgresssCount = 0
 
     setMessages: ->
         @.messages[google.maps.DirectionsStatus.ZERO_RESULTS] = "Nie znaleziono trasy - rysuję linię prostą"
@@ -509,7 +509,7 @@ class RouteWrapper extends PolylineWrapper
 
     isValid: ->
         # check if all google directions are already loaded
-        if Object.keys(@.googleRoueSearchesInProgresss).length
+        if @.roueSearchesInProgresssCount
             return false;
 
         if @.mainMarkers.length > 2
@@ -601,9 +601,8 @@ class RouteWrapper extends PolylineWrapper
             request.waypoints = [{location:pos2, stopover:false},]
 
         # finally ask google
+        @.roueSearchesInProgresssCount += 1
         _this = @
-        routeRequestId = Math.random()
-        @.googleRoueSearchesInProgresss[routeRequestId] = true;
         @.directionsService.route(request, (response, status) ->
             if status == google.maps.DirectionsStatus.OK
                 # write result to local cache
@@ -625,7 +624,7 @@ class RouteWrapper extends PolylineWrapper
                 mark2.useGoogleDirections = false;
                 # ...and tell the user that nothing was found
                 _this.displayDirectionsWarning(status)
-            delete @.googleRoueSearchesInProgresss[routeRequestId]
+            _this.roueSearchesInProgresssCount -= 1
         )
 
     displayDirectionsWarning: (status) ->

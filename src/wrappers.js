@@ -572,6 +572,7 @@
       RouteWrapper.__super__.constructor.call(this, parent, options);
       this.messages = {};
       this.setMessages();
+      this.roueSearchesInProgresssCount = 0;
     }
 
     RouteWrapper.prototype.setMessages = function() {
@@ -589,6 +590,9 @@
     };
 
     RouteWrapper.prototype.isValid = function() {
+      if (this.roueSearchesInProgresssCount) {
+        return false;
+      }
       if (this.mainMarkers.length > 2) {
         return true;
       }
@@ -661,6 +665,7 @@
           }
         ];
       }
+      this.roueSearchesInProgresssCount += 1;
       _this = this;
       return this.directionsService.route(request, function(response, status) {
         var path2, ref1;
@@ -671,11 +676,12 @@
             _this.directionsCache[cacheKey2] = path2;
           }
           _this.displayResponseExtras(response);
-          return _this.redraw();
+          _this.redraw();
         } else {
           mark2.useGoogleDirections = false;
-          return _this.displayDirectionsWarning(status);
+          _this.displayDirectionsWarning(status);
         }
+        return _this.roueSearchesInProgresssCount -= 1;
       });
     };
 
